@@ -1,98 +1,113 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Vinasoftware Accounting - Backend API 🚀
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Dự án Backend API cho hệ thống quản lý Kế toán & HR (Vinasoftware Accounting), được xây dựng trên nền tảng tiến tiến đảm bảo hiệu suất cao và dễ dàng mở rộng.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
 
-## Description
+- **Framework:** [NestJS](https://nestjs.com/) (Node.js) - Kiến trúc module hóa, hỗ trợ Dependency Injection mạnh mẽ.
+- **Ngôn ngữ:** TypeScript.
+- **Bảo mật & Authentication:** JWT (JSON Web Tokens), Cookie-based Auth, bcrypt.
+- **ORM & Database:** [Prisma](https://www.prisma.io/) + PostgreSQL.
+- **Tài liệu API:** Swagger (OpenAPI) & [Scalar API Reference](https://scalar.com/).
+- **Môi trường & Triển khai:** Docker, hỗ trợ deploy Serverless / Container (Railway, Render).
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 💻 Cài Đặt Dưới Dưới Cục Bộ (Local Development)
 
+### Yêu cầu hệ thống (Prerequisites)
+- [Node.js](https://nodejs.org/) (Khuyên dùng v18+).
+- Hệ quản trị cơ sở dữ liệu PostgreSQL đã được cài đặt, hoặc một Database URL Cloud (Neon, Supabase).
+
+### 1. Cài đặt thư viện
 ```bash
-$ npm install
+git clone https://github.com/huyduc1704/vinasoftware-be.git
+cd vinasoftware-accounting
+npm install
 ```
 
-## Compile and run the project
+### 2. Thiết lập Biến môi trường
+Tạo file `.env` ở thư mục gốc của dự án và điền các thông tin sau:
+```env
+# URL kết nối đến cơ sở dữ liệu PostgreSQL của bạn
+DATABASE_URL="postgresql://user:password@localhost:5432/vinasoftware_db?schema=public"
 
-```bash
-# development
-$ npm run start
+# Khóa bí mật dùng để mã hóa Token đăng nhập (JWT)
+JWT_SECRET="Chuoi-Bi-Mat-Tao-Token-Cua-Ban-O-Day"
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Port chạy ứng dụng (Mặc định 8080)
+PORT=8080
 ```
 
-## Run tests
-
+### 3. Khởi tạo Cơ sở dữ liệu (Database Setup)
+Đẩy cấu trúc bảng (Schema) xuống Database và tạo dữ liệu mẫu (Seeding):
 ```bash
-# unit tests
-$ npm run test
+# Push cấu trúc bảng xuống Database
+npx prisma db push
 
-# e2e tests
-$ npm run test:e2e
+# Generate lại Prisma Client để Typescript nhận diện
+npx prisma generate
 
-# test coverage
-$ npm run test:cov
+# (Tùy chọn) Khởi tạo dữ liệu mẫu gồm Tài khoản Admin & Các chức danh nhân sự
+npm run seed
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 4. Khởi chạy Ứng dụng
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Chế độ phát triển (Cập nhật code tự động)
+npm run dev
+
+# Chế độ Production
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Server sẽ chạy tại: `http://localhost:8080`
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 📚 Tài Liệu API (API Documentation)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Sau khi khởi chạy ứng dụng thành công, toàn bộ tài liệu hệ thống API đã được tự động tạo và biên dịch thông qua Swagger & Scalar.
 
-## Support
+- **URL truy cập API Docs:** `http://localhost:8080/docs`
+- Bạn có thể xem chi tiết các Endpoint, Models gửi nhận và Test API trực tiếp ngay trên giao diện này.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+---
 
-## Stay in touch
+## 🐳 Triển Khai Lên Máy Chủ (Deployment)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Dự án này đã được cấu hình sẵn sàng để có thể Deploy bằng **Docker**.
 
-## License
+### Gợi ý nền tảng:
+- **Hosting Backend:** [Railway.app](https://railway.app), [Render.com](https://render.com) (Hỗ trợ chạy Docker Container liên tục).
+- **Hosting Database:** [Neon.tech](https://neon.tech), [Supabase.com](https://supabase.com/database) (Cung cấp PostgreSQL Serverless miễn phí).
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Cách Deploy trên Railway (Bằng Github Repo):
+1. Đăng nhập [Railway.app](https://railway.app) > **New Project** > **Deploy from GitHub repo**.
+2. Chọn repository `vinasoftware-be`.
+3. Đi tới Tab **Variables** của Service mới tạo, thêm các biến:
+   - `DATABASE_URL` = (Connection String trỏ đến Neon / Supabase)
+   - `JWT_SECRET` = (Chuỗi Secret Của Bạn)
+   - `PORT` = `8080`
+4. Railway sẽ tự động đọc file `Dockerfile` trong source code và tiến hành build & chạy server.
+
+---
+
+## 📄 Cấu Trúc Thư Mục Chính
+```text
+vinasoftware-accounting/
+├── prisma/
+│   ├── schema.prisma      # Định nghĩa thiết kế Database
+│   └── seed.ts            # Dữ liệu mẫu (Khởi tạo tài khoản admin)
+├── src/
+│   ├── auth/              # Module Xác thực (Login, JWT Guards)
+│   ├── contracts/         # Module Quản lý Hợp đồng Khách hàng
+│   ├── customers/         # Module Quản lý Khách hàng
+│   ├── employees/         # Module Quản lý Nhân sự & Phả hệ
+│   ├── prisma/            # Module Kết nối Database Prisma
+│   ├── app.module.ts      # Module Gốc của hệ thống
+│   └── main.ts            # File khởi chạy ứng dụng
+├── Dockerfile             # Cấu hình Build Docker Image
+└── package.json           # Danh sách Package Node.js
+```
