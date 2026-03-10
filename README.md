@@ -32,8 +32,8 @@ Tạo file `.env` ở thư mục gốc của dự án và điền các thông ti
 # URL kết nối đến cơ sở dữ liệu PostgreSQL của bạn
 DATABASE_URL="postgresql://user:password@localhost:5432/vinasoftware_db?schema=public"
 
-# Khóa bí mật dùng để mã hóa Token đăng nhập (JWT)
-JWT_SECRET="Chuoi-Bi-Mat-Tao-Token-Cua-Ban-O-Day"
+# JWT Secret Key
+JWT_SECRET="[ENCRYPTION_KEY]"
 
 # Port chạy ứng dụng (Mặc định 8080)
 PORT=8080
