@@ -13,101 +13,175 @@ Dự án Backend API cho hệ thống quản lý Kế toán & HR (Vinasoftware A
 
 ---
 
-## 💻 Cài Đặt Dưới Dưới Cục Bộ (Local Development)
+## 🗄️ Bước 1: Tạo & Kết Nối Database PostgreSQL
 
-### Yêu cầu hệ thống (Prerequisites)
-- [Node.js](https://nodejs.org/) (Khuyên dùng v18+).
-- Hệ quản trị cơ sở dữ liệu PostgreSQL đã được cài đặt, hoặc một Database URL Cloud (Neon, Supabase).
+Dự án sử dụng **PostgreSQL**. Bạn có thể dùng database trên Cloud miễn phí hoặc cài trên máy tính cục bộ.
 
-### 1. Cài đặt thư viện
+### Cách 1: Dùng Cloud Database (Khuyến nghị - Dễ hơn)
+
+**Dùng [Neon.tech](https://neon.tech) (Miễn phí, không cần cài đặt):**
+1. Vào [neon.tech](https://neon.tech) → Đăng ký tài khoản miễn phí.
+2. Tạo một **Project** mới.
+3. Vào mục **Connection Details** → Copy chuỗi **Connection String** có dạng:
+   ```
+   postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+   ```
+4. Dán vào file `.env` ở bước tiếp theo.
+
+### Cách 2: Dùng PostgreSQL Cục Bộ (Local)
+
+1. Tải & cài đặt [PostgreSQL](https://www.postgresql.org/download/).
+2. Sau khi cài, mở **pgAdmin** hoặc dùng terminal để tạo database:
+   ```sql
+   CREATE DATABASE vinasoftware_db;
+   ```
+3. Connection String sẽ có dạng:
+   ```
+   postgresql://postgres:your_password@localhost:5432/vinasoftware_db
+   ```
+
+---
+
+## 💻 Bước 2: Chạy Dự Án Cục Bộ (Không dùng Docker)
+
+### Yêu cầu
+- [Node.js](https://nodejs.org/) v18+
+- Database PostgreSQL đã tạo ở Bước 1
+
+### Cài đặt
+
 ```bash
+# 1. Clone source code về máy
 git clone https://github.com/huyduc1704/vinasoftware-be.git
 cd vinasoftware-accounting
+
+# 2. Cài các thư viện cần thiết
 npm install
 ```
 
-### 2. Thiết lập Biến môi trường
-Tạo file `.env` ở thư mục gốc của dự án và điền các thông tin sau:
+### Tạo file `.env`
+
+Tạo file `.env` ở thư mục gốc và điền vào:
 ```env
-# URL kết nối đến cơ sở dữ liệu PostgreSQL của bạn
-DATABASE_URL="postgresql://user:password@localhost:5432/vinasoftware_db?schema=public"
+# Dán Connection String từ Bước 1 vào đây
+DATABASE_URL="postgresql://user:password@localhost:5432/vinasoftware_db"
 
-# JWT Secret Key
-JWT_SECRET="[ENCRYPTION_KEY]"
+# Chuỗi bí mật để mã hóa Token đăng nhập (Đặt tùy ý, càng dài càng bảo mật)
+JWT_SECRET="your-super-secret-key-here"
 
-# Port chạy ứng dụng (Mặc định 8080)
+# Cổng chạy server (Mặc định 8080)
 PORT=8080
 ```
 
-### 3. Khởi tạo Cơ sở dữ liệu (Database Setup)
-Đẩy cấu trúc bảng (Schema) xuống Database và tạo dữ liệu mẫu (Seeding):
+### Khởi tạo Database
+
 ```bash
-# Push cấu trúc bảng xuống Database
+# Tạo cấu trúc bảng trong Database
 npx prisma db push
 
-# Generate lại Prisma Client để Typescript nhận diện
-npx prisma generate
-
-# (Tùy chọn) Khởi tạo dữ liệu mẫu gồm Tài khoản Admin & Các chức danh nhân sự
+# Tạo dữ liệu mẫu (Tài khoản Admin mặc định)
 npm run seed
 ```
 
-### 4. Khởi chạy Ứng dụng
-```bash
-# Chế độ phát triển (Cập nhật code tự động)
-npm run dev
+### Khởi chạy
 
-# Chế độ Production
-npm run build
-npm run start:prod
+```bash
+# Chế độ phát triển (Tự reload khi sửa code)
+npm run dev
 ```
 
-Server sẽ chạy tại: `http://localhost:8080`
+✅ Server chạy tại: `http://localhost:8080`
+✅ Tài liệu API tại: `http://localhost:8080/docs`
 
 ---
 
-## 📚 Tài Liệu API (API Documentation)
+## 🐳 Bước 2 (Thay Thế): Chạy Bằng Docker
 
-Sau khi khởi chạy ứng dụng thành công, toàn bộ tài liệu hệ thống API đã được tự động tạo và biên dịch thông qua Swagger & Scalar.
+Nếu không muốn cài Node.js, bạn có thể dùng Docker để chạy toàn bộ dự án trong Container.
 
-- **URL truy cập API Docs:** `http://localhost:8080/docs`
-- Bạn có thể xem chi tiết các Endpoint, Models gửi nhận và Test API trực tiếp ngay trên giao diện này.
+### Yêu cầu
+- Cài [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Windows/Mac) hoặc Docker Engine (Linux).
+- Đã có Database PostgreSQL (Neon.tech hoặc local) từ Bước 1.
+
+### Các lệnh Docker
+
+```bash
+# 1. Build Docker Image từ Dockerfile
+docker build -t vinasoftware-be .
+
+# 2. Chạy Container (Thay DATABASE_URL và JWT_SECRET bằng giá trị của bạn)
+docker run -d \
+  -p 8080:8080 \
+  -e DATABASE_URL="postgresql://user:password@host:5432/db" \
+  -e JWT_SECRET="your-secret-key" \
+  -e PORT=8080 \
+  --name vinasoftware-api \
+  vinasoftware-be
+
+# 3. Chạy Migration Database (Chỉ cần làm lần đầu)
+docker exec -it vinasoftware-api npx prisma db push
+docker exec -it vinasoftware-api npm run seed
+```
+
+✅ Server chạy tại: `http://localhost:8080`
+
+### Một số lệnh Docker hữu ích
+
+```bash
+# Xem logs (nhật ký) của container
+docker logs -f vinasoftware-api
+
+# Dừng container
+docker stop vinasoftware-api
+
+# Khởi động lại
+docker start vinasoftware-api
+
+# Xóa container (khi muốn build lại)
+docker rm -f vinasoftware-api
+```
 
 ---
 
-## 🐳 Triển Khai Lên Máy Chủ (Deployment)
+## ☁️ Bước 3: Deploy Lên Railway (Production)
 
-Dự án này đã được cấu hình sẵn sàng để có thể Deploy bằng **Docker**.
+> **Lưu ý:** Hosting PHP truyền thống **không hỗ trợ** chạy NestJS. Phải dùng Railway, Render hoặc VPS.
 
-### Gợi ý nền tảng:
-- **Hosting Backend:** [Railway.app](https://railway.app), [Render.com](https://render.com) (Hỗ trợ chạy Docker Container liên tục).
-- **Hosting Database:** [Neon.tech](https://neon.tech), [Supabase.com](https://supabase.com/database) (Cung cấp PostgreSQL Serverless miễn phí).
+### Deploy tự động từ GitHub (Khuyến nghị)
 
-### Cách Deploy trên Railway (Bằng Github Repo):
-1. Đăng nhập [Railway.app](https://railway.app) > **New Project** > **Deploy from GitHub repo**.
-2. Chọn repository `vinasoftware-be`.
-3. Đi tới Tab **Variables** của Service mới tạo, thêm các biến:
-   - `DATABASE_URL` = (Connection String trỏ đến Neon / Supabase)
-   - `JWT_SECRET` = (Chuỗi Secret Của Bạn)
+1. Đăng ký [Railway.app](https://railway.app) (Miễn phí).
+2. **New Project** → **Deploy from GitHub repo** → Chọn `vinasoftware-be`.
+3. Vào Tab **Variables** → Thêm các biến môi trường:
+   - `DATABASE_URL` = Connection String từ Neon.tech
+   - `JWT_SECRET` = Chuỗi bí mật của bạn
    - `PORT` = `8080`
-4. Railway sẽ tự động đọc file `Dockerfile` trong source code và tiến hành build & chạy server.
+4. Railway tự động đọc `Dockerfile` và build + chạy server.
+5. Vào Tab **Settings** → **Domains** để lấy URL công khai.
 
 ---
 
-## 📄 Cấu Trúc Thư Mục Chính
+## 📚 Tài Liệu API
+
+Sau khi server chạy, truy cập tài liệu API đầy đủ tại:
+- **Local:** `http://localhost:8080/docs`
+- **Production:** `https://your-railway-url.up.railway.app/docs`
+
+---
+
+## 📄 Cấu Trúc Thư Mục
+
 ```text
 vinasoftware-accounting/
 ├── prisma/
-│   ├── schema.prisma      # Định nghĩa thiết kế Database
-│   └── seed.ts            # Dữ liệu mẫu (Khởi tạo tài khoản admin)
+│   ├── schema.prisma      # Định nghĩa cấu trúc Database
+│   └── seed.ts            # Dữ liệu mẫu khởi tạo
 ├── src/
-│   ├── auth/              # Module Xác thực (Login, JWT Guards)
-│   ├── contracts/         # Module Quản lý Hợp đồng Khách hàng
+│   ├── auth/              # Module Xác thực (Login, JWT)
+│   ├── contracts/         # Module Quản lý Hợp đồng
 │   ├── customers/         # Module Quản lý Khách hàng
-│   ├── employees/         # Module Quản lý Nhân sự & Phả hệ
-│   ├── prisma/            # Module Kết nối Database Prisma
-│   ├── app.module.ts      # Module Gốc của hệ thống
-│   └── main.ts            # File khởi chạy ứng dụng
-├── Dockerfile             # Cấu hình Build Docker Image
-└── package.json           # Danh sách Package Node.js
+│   ├── employees/         # Module Quản lý Nhân sự
+│   ├── prisma/            # Kết nối Database
+│   └── main.ts            # Điểm khởi chạy ứng dụng
+├── Dockerfile             # Cấu hình build Docker
+└── package.json           # Danh sách thư viện
 ```

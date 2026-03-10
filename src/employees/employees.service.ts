@@ -87,11 +87,12 @@ export class EmployeesService {
     };
 
     if (regionCode) {
+      const regions = Array.isArray(regionCode) ? regionCode : [regionCode];
       createData.employeeRegions = {
-        create: {
-          regionCode,
+        create: regions.map(rc => ({
+          regionCode: rc,
           isMain: true
-        }
+        }))
       };
     }
 
@@ -133,12 +134,13 @@ export class EmployeesService {
     };
 
     if (regionCode) {
+      const regions = Array.isArray(regionCode) ? regionCode : [regionCode];
       formattedData.employeeRegions = {
         deleteMany: {},
-        create: {
-          regionCode,
+        create: regions.map(rc => ({
+          regionCode: rc,
           isMain: true
-        }
+        }))
       };
     }
 

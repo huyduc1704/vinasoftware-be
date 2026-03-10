@@ -13,12 +13,24 @@ export class CustomersService {
 
   findAll() {
     return this.prisma.customer.findMany({
+      include: {
+        contracts: {
+          orderBy: { createdAt: 'desc' }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
   }
 
   async findOne(id: string) {
-    const customer = await this.prisma.customer.findUnique({ where: { id } });
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      include: {
+        contracts: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
 
     if (!customer) {
       throw new NotFoundException('Không tìm thấy khách hàng');

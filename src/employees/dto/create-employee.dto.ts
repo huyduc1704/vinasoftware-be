@@ -52,10 +52,10 @@ export class CreateEmployeeDto {
     @IsString()
     roleId?: string;
 
-    @ApiProperty({ description: 'Mã Khu vực (Vùng)', required: false })
+    @ApiProperty({ description: 'Mã Khu vực (Vùng)', required: false, type: [String] })
     @IsOptional()
-    @IsString()
-    regionCode?: string;
+    @IsString({ each: true })
+    regionCode?: string | string[];
 
     @ApiProperty({ description: 'ID cua nguoi quan ly truc tiep' })
     @IsOptional()
