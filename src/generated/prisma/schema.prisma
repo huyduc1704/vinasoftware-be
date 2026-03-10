@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id               String              @id @default(uuid())
+  code             String              @unique
+  name             String              @unique
+  description      String?
+  is_active        Boolean             @default(true)
+  users            User[]
+  rolesPermissions Roles_Permissions[]
+  usersRoles       Users_Roles[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  employeeCode String?   @unique
+  fullName     String
+  password     String
+  email        String?
+  gender       String?
+  dob          DateTime?
+  address      String?
+  account_type String    @default("ADMIN")
+  phone        String?
+  joinDate     DateTime?
+  leaveDate    DateTime?
+  isActive     Boolean   @default(true)
+
+  // Region Relation
+  regionCode String?
+  region     Region? @relation(fields: [regionCode], references: [code])
+
+  // Self-relations
+  seniorDeptManagerId String?
+  seniorDeptManager   User?   @relation("SeniorDeptManager", fields: [seniorDeptManagerId], references: [id])
+  seniorDeptSubs      User[]  @relation("SeniorDeptManager")
+
+  deptManagerId String?
+  deptManager   User?   @relation("DeptManager", fields: [deptManagerId], references: [id])
+  deptSubs      User[]  @relation("DeptManager")
+
+  managerId  String?
+  manager    User?   @relation("DirectManager", fields: [managerId], references: [id])
+  directSubs User[]  @relation("DirectManager")
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  contracts       Contracts[]
+  auditLogs       Audit_Logs[]
+  files           Files[]
+  usersRoles      Users_Roles[]
+  importHistories Import_History[]
+  cskhNotes       Customer_Care_Notes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Region {
+  id       String  @id @default(uuid())
+  code     String  @unique
+  name     String
+  address  String?
+  isActive Boolean @default(true)
+  users    User[]
+}
+
+model Audit_Logs {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  tableName String
+  oldData   Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+}
+
+model Files {
+  id         String     @id @default(uuid())
+  fileName   String
+  filePath   String
+  fileType   String
+  category   String // AVATAR, ID_FRONT, ID_BACK, CONTRACT_DOC
+  userId     String?
+  user       User?      @relation(fields: [userId], references: [id])
+  contractId String?
+  contract   Contracts? @relation(fields: [contractId], references: [id])
+  createdAt  DateTime   @default(now())
+}
+
+model Permissions {
+  id               String              @id @default(uuid())
+  code             String              @unique
+  name             String
+  module           String?
+  rolesPermissions Roles_Permissions[]
+}
+
+model Roles_Permissions {
+  roleId       String
+  permissionId String
+  role         Role        @relation(fields: [roleId], references: [id])
+  permission   Permissions @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model Users_Roles {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model Contracts {
+  id           String                @id @default(uuid())
+  contractCode String                @unique
+  title        String
+  type         String // KETOAN, CSKH
+  status       String                @default("ACTIVE")
+  totalAmount  Decimal?              @db.Decimal(18, 2)
+  createdById  String
+  creator      User                  @relation(fields: [createdById], references: [id])
+  renewals     Contract_Renewals[]
+  cskhNotes    Customer_Care_Notes[]
+  files        Files[]
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+}
+
+model Import_History {
+  id          String   @id @default(uuid())
+  fileName    String
+  uploadById  String
+  uploader    User     @relation(fields: [uploadById], references: [id])
+  module      String //KETOAN
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  failedRows  Int      @default(0)
+  status      String //SUCCESS, FAILED, PARTIAL
+  errorLog    Json?
+  createdAt   DateTime @default(now())
+}
+
+model Customer_Care_Notes {
+  id          String    @id @default(uuid())
+  contractId  String
+  contract    Contracts @relation(fields: [contractId], references: [id])
+  createdById String
+  creator     User      @relation(fields: [createdById], references: [id])
+  content     String
+  createdAt   DateTime  @default(now())
+}
+
+model Contract_Renewals {
+  id          String    @id @default(uuid())
+  contractId  String
+  contract    Contracts @relation(fields: [contractId], references: [id])
+  renewalDate DateTime
+  note        String?
+  processedBy String?
+  createdAt   DateTime  @default(now())
+}
+
+model System_Settings {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       String  @db.Text
+  description String?
+}

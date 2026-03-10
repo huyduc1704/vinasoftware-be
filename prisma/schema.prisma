@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id               String              @id @default(uuid())
+  code             String              @unique
+  name             String              @unique
+  description      String?
+  is_active        Boolean             @default(true)
+  users            User[]
+  rolesPermissions Roles_Permissions[]
+  usersRoles       Users_Roles[]
+}
+
+model Employee {
+  id           String    @id @default(uuid())
+  employeeCode String    @unique
+  roleCode     String?
+  fullName     String
+  email        String?
+  gender       String?
+  dob          DateTime?
+  address      String?
+  phone        String?
+  joinDate     DateTime?
+  leaveDate    DateTime?
+  isActive     Boolean   @default(true)
+
+  // Region Relation
+  employeeRegions Employee_Regions[]
+
+  // Self-relations for hierarchy
+  areaManagerId String?
+  areaManager   Employee?  @relation("AreaManager", fields: [areaManagerId], references: [id])
+  areaSubs      Employee[] @relation("AreaManager")
+
+  seniorDeptManagerId String?
+  seniorDeptManager   Employee?  @relation("SeniorDeptManager", fields: [seniorDeptManagerId], references: [id])
+  seniorDeptSubs      Employee[] @relation("SeniorDeptManager")
+
+  deptManagerId String?
+  deptManager   Employee?  @relation("DeptManager", fields: [deptManagerId], references: [id])
+  deptSubs      Employee[] @relation("DeptManager")
+
+  managerId  String?
+  manager    Employee?  @relation("DirectManager", fields: [managerId], references: [id])
+  directSubs Employee[] @relation("DirectManager")
+
+  files Files[]
+  user  User?
+
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  contractEmployees Contract_Employees[]
+}
+
+model User {
+  id           String  @id @default(uuid())
+  username     String  @unique // Used for system login
+  password     String
+  account_type String  @default("ADMIN")
+  isActive     Boolean @default(true)
+
+  // Link to Employee profile
+  employeeId String   @unique
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  contracts       Contracts[]
+  auditLogs       Audit_Logs[]
+  usersRoles      Users_Roles[]
+  importHistories Import_History[]
+  cskhNotes       Customer_Care_Notes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Region {
+  id              String             @id @default(uuid())
+  code            String             @unique
+  name            String
+  address         String?
+  isActive        Boolean            @default(true)
+  employeeRegions Employee_Regions[]
+}
+
+model Employee_Regions {
+  employeeId String
+  regionCode String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  region     Region   @relation(fields: [regionCode], references: [code])
+
+  isMain Boolean @default(false)
+
+  @@id([employeeId, regionCode])
+}
+
+model Audit_Logs {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  tableName String
+  oldData   Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+}
+
+model Files {
+  id         String     @id @default(uuid())
+  fileName   String
+  filePath   String
+  fileType   String
+  category   String // AVATAR, ID_FRONT, ID_BACK, CONTRACT_DOC
+  employeeId String?
+  employee   Employee?  @relation(fields: [employeeId], references: [id])
+  contractId String?
+  contract   Contracts? @relation(fields: [contractId], references: [id])
+  createdAt  DateTime   @default(now())
+}
+
+model Permissions {
+  id               String              @id @default(uuid())
+  code             String              @unique
+  name             String
+  module           String?
+  rolesPermissions Roles_Permissions[]
+}
+
+model Roles_Permissions {
+  roleId       String
+  permissionId String
+  role         Role        @relation(fields: [roleId], references: [id])
+  permission   Permissions @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model Users_Roles {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model Customer {
+  id             String      @id @default(uuid())
+  fullName       String
+  representative String?
+  taxCode        String?
+  phone          String?
+  email          String?
+  dob            DateTime?
+  address        String?
+  contracts      Contracts[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Contracts {
+  id           String @id @default(uuid())
+  contractCode String @unique
+  title        String
+  type         String // WEB, HOSTING, DOMAIN, ADS_FB, ADS_GG...
+  status       String @default("ACTIVE")
+
+  //-- Kế toán & Tài chính --
+  receiptCode     String?
+  signDate        DateTime?
+  submissionDate  DateTime?
+  totalAmount     Decimal?  @db.Decimal(18, 2) //Tổng giá trị
+  vatAmount       Decimal?  @db.Decimal(18, 2) //Tổng tiền VAT
+  vatRate         Decimal?  @db.Decimal(5, 2) //% VAT
+  paidAmount      Decimal?  @db.Decimal(18, 2) //Đã thu
+  remainingAmount Decimal?  @db.Decimal(18, 2) //Còn lại
+
+  //-- Thông tin chi tiết dịch vụ
+  serviceDetails Json?
+
+  //-- Lịch sử thanh toán (Đợt 1, Đợt 2, Bàn giao, ...)
+  paymentStages Json?
+
+  //-- Khách hàng_Hợp đồng --
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  //--Nhân viên_Hợp đồng--
+  contractEmployees Contract_Employees[]
+
+  //--Snapshots quản lý của nhân viên tại thời điểm ký --
+  regionCode          String?
+  managerId           String?
+  deptManagerId       String?
+  seniorDeptManagerId String?
+
+  createdById String // Người tạo
+  creator     User   @relation(fields: [createdById], references: [id])
+
+  renewals  Contract_Renewals[]
+  cskhNotes Customer_Care_Notes[]
+  files     Files[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+}
+
+model Contract_Employees {
+  contractId String
+  employeeId String
+  contract   Contracts @relation(fields: [contractId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  isMain     Boolean   @default(true)
+
+  @@id([contractId, employeeId])
+}
+
+model Import_History {
+  id          String   @id @default(uuid())
+  fileName    String
+  uploadById  String
+  uploader    User     @relation(fields: [uploadById], references: [id])
+  module      String //KETOAN
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  failedRows  Int      @default(0)
+  status      String //SUCCESS, FAILED, PARTIAL
+  errorLog    Json?
+  createdAt   DateTime @default(now())
+}
+
+model Customer_Care_Notes {
+  id          String    @id @default(uuid())
+  contractId  String
+  contract    Contracts @relation(fields: [contractId], references: [id])
+  createdById String
+  creator     User      @relation(fields: [createdById], references: [id])
+  content     String
+  createdAt   DateTime  @default(now())
+}
+
+model Contract_Renewals {
+  id          String    @id @default(uuid())
+  contractId  String
+  contract    Contracts @relation(fields: [contractId], references: [id])
+  renewalDate DateTime
+  note        String?
+  processedBy String?
+  createdAt   DateTime  @default(now())
+}
+
+model System_Settings {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       String  @db.Text
+  description String?
+}
