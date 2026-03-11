@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CreateContractDto } from './dto/create-contract.dto';
 import { UpdateContractDto } from './dto/update-contract.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,11 +11,25 @@ export class ContractsService {
   constructor(private readonly prisma: PrismaService) { }
 
   async create(createContractDto: CreateContractDto, userId: string) {
-    const { employees, ...contractData } = createContractDto;
+    if (!userId) throw new UnauthorizedException('Bạn chưa đăng nhập. Vui lòng đăng nhập để tạo hợp đồng.');
+    const { employees, customerData, ...contractData } = createContractDto;
+
+    // Xử lý khách hàng: dùng ID có sẵn hoặc tạo mới
+    let resolvedCustomerId = contractData.customerId;
+
+    if (!resolvedCustomerId) {
+      if (!customerData) {
+        throw new BadRequestException('Vui lòng cung cấp customerId hoặc thông tin khách hàng mới (customerData).');
+      }
+      // Tạo khách hàng mới và lấy ID
+      const newCustomer = await this.prisma.customer.create({ data: customerData });
+      resolvedCustomerId = newCustomer.id;
+    }
 
     const contract = await this.prisma.contracts.create({
       data: {
         ...contractData,
+        customerId: resolvedCustomerId,
         signDate: contractData.signDate ? new Date(contractData.signDate) : null,
         submissionDate: contractData.submissionDate ? new Date(contractData.submissionDate) : null,
         createdById: userId,
@@ -103,9 +117,19 @@ export class ContractsService {
   }
 
   async update(id: string, updateContractDto: UpdateContractDto) {
-    const { employees, ...updateData } = updateContractDto;
+    // Lọc bỏ các field không thuộc schema Contracts để tránh lỗi Prisma
+    const {
+      employees,
+      customerData,
+      // @ts-ignore - các field FE gửi lên nhưng không tồn tại trong schema
+      employeeId,
+      displayEmpCode,
+      displayEmpName,
+      displayDept,
+      displayRegion,
+      ...updateData
+    } = updateContractDto as any;
 
-    // Parse dates if they are provided in the update payload
     const dataToUpdate: any = { ...updateData };
     if (updateData.signDate) {
       dataToUpdate.signDate = new Date(updateData.signDate);
@@ -121,7 +145,6 @@ export class ContractsService {
   }
 
   async updateAssignees(id: string, updateAssigneesDto: UpdateAssigneesDto) {
-    // Transaction to safely delete and re-create assignees
     return this.prisma.$transaction(async (prisma) => {
       // Delete existing
       await prisma.contract_Employees.deleteMany({

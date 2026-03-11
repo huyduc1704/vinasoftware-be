@@ -7,6 +7,38 @@ export class ContractEmployeeDto {
     @IsOptional() isMain?: boolean;
 }
 
+export class InlineCustomerDto {
+    @ApiProperty({ description: 'Tên khách hàng / Tên công ty' })
+    @IsNotEmpty()
+    @IsString()
+    fullName: string;
+
+    @ApiProperty({ required: false, description: 'Người đại diện' })
+    @IsOptional()
+    @IsString()
+    representative?: string;
+
+    @ApiProperty({ required: false, description: 'Mã số thuế' })
+    @IsOptional()
+    @IsString()
+    taxCode?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    phone?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    email?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    address?: string;
+}
+
 export class CreateContractDto {
     @ApiProperty()
     @IsNotEmpty()
@@ -71,10 +103,16 @@ export class CreateContractDto {
     @IsOptional()
     paymentStages?: any;
 
-    @ApiProperty()
-    @IsNotEmpty()
+    @ApiProperty({ required: false, description: 'ID khách hàng đã có sẵn. Nếu không có thì truyền customerData để tạo mới.' })
+    @IsOptional()
     @IsString()
-    customerId: string;
+    customerId?: string;
+
+    @ApiProperty({ required: false, type: InlineCustomerDto, description: 'Thông tin khách hàng mới (dùng khi chưa có customerId)' })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => InlineCustomerDto)
+    customerData?: InlineCustomerDto;
 
     @ApiProperty({ required: false })
     @IsOptional()

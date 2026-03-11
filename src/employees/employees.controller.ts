@@ -13,7 +13,7 @@ export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) { }
 
   @ApiOperation({ summary: 'Lấy thông tin của nhân viên các cấp' })
-  @ApiQuery({ name: 'roleCode', required: false, description: 'Lọc theo Chức danh công việc (roleCode của Employee)' })
+  @ApiQuery({ name: 'roleCode', required: false, description: 'Lọc theo roleCode. Hỗ trợ nhiều giá trị phân tách bằng dấu phẩy. VD: NVKD,TRUONG_PHONG,QUAN_LY' })
   @ApiQuery({ name: 'areaManagerId', required: false, description: 'Lọc theo Trưởng khu vực (Area Manager)' })
   @ApiQuery({ name: 'seniorDeptManagerId', required: false, description: 'Lọc theo Trưởng phòng cấp cao' })
   @ApiQuery({ name: 'deptManagerId', required: false, description: 'Lọc theo Trưởng phòng' })

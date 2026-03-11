@@ -18,7 +18,7 @@ export class ContractsController {
   @ApiOperation({ summary: 'Tạo mới hợp đồng (Cá nhân hoặc Share)' })
   @Post()
   create(@Body() createContractDto: CreateContractDto, @Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user?.userId;
     return this.contractsService.create(createContractDto, userId);
   }
 
@@ -63,14 +63,14 @@ export class ContractsController {
   @ApiOperation({ summary: 'Thêm lịch sử gia hạn' })
   @Post(':id/renewals')
   addRenewal(@Param('id') id: string, @Body() createRenewalDto: CreateRenewalDto, @Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user?.userId;
     return this.contractsService.addRenewal(id, createRenewalDto, userId);
   }
 
   @ApiOperation({ summary: 'Thêm ghi chú chăm sóc khách hàng' })
   @Post(':id/notes')
   addNote(@Param('id') id: string, @Body() createNoteDto: CreateNoteDto, @Req() req: any) {
-    const userId = req.user.id;
+    const userId = req.user?.userId;
     return this.contractsService.addNote(id, createNoteDto, userId);
   }
 }

@@ -1,5 +1,5 @@
 # Base image
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Thiết lập thư mục làm việc
 WORKDIR /app
@@ -22,7 +22,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Stage 2: Production image (Giảm kích thước file image)
-FROM node:18-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 

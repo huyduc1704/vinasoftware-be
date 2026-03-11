@@ -39,7 +39,7 @@ async function seed() {
 
         console.log('Seeding Roles finished.')
 
-        // Create a Role first
+        // Create a Role
         let role = await prisma.role.findFirst({ where: { code: 'ADMIN' } });
         if (!role) {
             role = await prisma.role.create({
@@ -60,15 +60,15 @@ async function seed() {
         });
 
         // Ensure we have a region to use
-        let defaultRegion = await prisma.region.findFirst({ where: { code: 'HO' } });
+        let defaultRegion = await prisma.region.findFirst({ where: { code: 'VNS01' } });
         if (!defaultRegion) {
             defaultRegion = await prisma.region.create({
                 data: {
-                    code: 'HO',
+                    code: 'VNS01',
                     name: 'Head Office',
                 }
             });
-            console.log('Created Region: HO');
+            console.log('Created Region: VNS01');
         }
 
         if (existingEmployee) {

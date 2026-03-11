@@ -18,7 +18,8 @@ export class EmployeesService {
     const whereCondition: any = {};
 
     if (roleCode) {
-      whereCondition.roleCode = roleCode;
+      const roles = roleCode.split(',').map(r => r.trim()).filter(Boolean);
+      whereCondition.roleCode = roles.length === 1 ? roles[0] : { in: roles };
     }
 
     if (areaManagerId) {
@@ -121,7 +122,6 @@ export class EmployeesService {
     const employee = await this.prisma.employee.findUnique({ where: { id }, include: { user: true } });
     if (!employee) throw new NotFoundException('Khong tim thay nhan vien');
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, roleId, employeeCode, regionCode, roleCode, ...employeeData } = data;
 
     const formattedData: any = {
@@ -142,6 +142,25 @@ export class EmployeesService {
           isMain: true
         }))
       };
+    }
+
+    // [Thăng chức / Giáng chức] Xử lý khi roleCode thay đổi
+    if (roleCode && roleCode !== employee.roleCode) {
+      // Danh sách các chức danh được coi là "Quản lý" (có quyền có cấp dưới)
+      const MANAGER_ROLES = ['TRUONG_KHU_VUC', 'TRUONG_PHONG_CAP_CAO', 'TRUONG_PHONG', 'QUAN_LY', 'AREA_MANAGER', 'SENIOR_MANAGER', 'DEPARTMENT_MANAGER', 'MANAGER'];
+
+      const isBeingDemoted = !MANAGER_ROLES.includes(roleCode);
+
+      if (isBeingDemoted) {
+        // GIÁNG CHỨC → Cắt đứt tất cả cấp dưới
+        await Promise.all([
+          this.prisma.employee.updateMany({ where: { managerId: id }, data: { managerId: null } }),
+          this.prisma.employee.updateMany({ where: { deptManagerId: id }, data: { deptManagerId: null } }),
+          this.prisma.employee.updateMany({ where: { seniorDeptManagerId: id }, data: { seniorDeptManagerId: null } }),
+          this.prisma.employee.updateMany({ where: { areaManagerId: id }, data: { areaManagerId: null } }),
+        ]);
+      }
+      // THĂNG CHỨC → Không cần làm gì, cấp dưới vẫn giữ nguyên
     }
 
     // Update the employee profile
@@ -214,6 +233,10 @@ export class EmployeesService {
       await this.prisma.users_Roles.deleteMany({ where: { userId: employee.user.id } });
       await this.prisma.user.delete({ where: { id: employee.user.id } });
     }
+
+    // Xóa dữ liệu liên quan trước khi xóa nhân viên, tránh lỗi fk
+    await this.prisma.employee_Regions.deleteMany({ where: { employeeId: id } });
+    await this.prisma.contract_Employees.deleteMany({ where: { employeeId: id } });
 
     return this.prisma.employee.delete({ where: { id } });
   }

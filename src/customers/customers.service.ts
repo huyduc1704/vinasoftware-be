@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -49,6 +49,12 @@ export class CustomersService {
 
   async remove(id: string) {
     await this.findOne(id);
+
+    // Kiểm tra xem khách hàng có hợp đồng liên kết không
+    const contractCount = await this.prisma.contracts.count({ where: { customerId: id } });
+    if (contractCount > 0) {
+      throw new BadRequestException(`Không thể xóa khách hàng này vì đang có ${contractCount} hợp đồng liên kết. Vui lòng xóa hoặc chuyển hợp đồng trước.`);
+    }
 
     return this.prisma.customer.delete({ where: { id } });
   }
