@@ -145,8 +145,6 @@ docker rm -f vinasoftware-api
 
 ## ☁️ Bước 3: Deploy Lên Railway (Production)
 
-> **Lưu ý:** Hosting PHP truyền thống **không hỗ trợ** chạy NestJS. Phải dùng Railway, Render hoặc VPS.
-
 ### Deploy tự động từ GitHub (Khuyến nghị)
 
 1. Đăng ký [Railway.app](https://railway.app) (Miễn phí).
