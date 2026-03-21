@@ -7,6 +7,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { jwtConstants } from './constants';
 import { Response } from 'express';
+import { userInfo } from 'os';
 
 @Injectable()
 export class AuthService {
@@ -18,27 +19,32 @@ export class AuthService {
     async login(loginDto: LoginDto, res: Response) {
         const { username, password } = loginDto;
 
-        const user = await this.prisma.user.findFirst({
-            where: {
-                OR: [
-                    { username: username },
-                    { employee: { email: username } }
-                ],
-                isActive: true,
-            },
+        const user = await this.prisma.user.findUnique({
+            where: { username },
             include: {
                 employee: true,
-                role: true
-            }
+                usersRoles: {
+                    include: {
+                        role: {
+                            include: {
+                                rolesPermissions: {
+                                    include: {
+                                        permission: true
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
 
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            throw new UnauthorizedException('Tên đăng nhập hoặc mật khẩu không chính xác');
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            throw new UnauthorizedException('Invalid credentials');
+        if (!user.isActive) {
+            throw new UnauthorizedException('Tài khoản đã bị khóa');
         }
 
         return this.generateTokens(user, res);
@@ -49,11 +55,15 @@ export class AuthService {
             where: { id: userId },
             include: {
                 employee: true,
-                role: {
+                usersRoles: {
                     include: {
-                        rolesPermissions: {
+                        role: {
                             include: {
-                                permission: true
+                                rolesPermissions: {
+                                    include: {
+                                        permission: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -69,10 +79,9 @@ export class AuthService {
         return result;
     }
 
-    async refreshToken(refreshTokenDto: RefreshTokenDto, res: Response) {
-        const { refreshToken } = refreshTokenDto;
+    async refreshToken(token: string, res: Response) {
         try {
-            const payload = this.jwtService.verify(refreshToken, {
+            const payload = this.jwtService.verify(token, {
                 secret: jwtConstants.refreshSecret,
             });
 
@@ -80,7 +89,11 @@ export class AuthService {
                 where: { id: payload.sub },
                 include: {
                     employee: true,
-                    role: true,
+                    usersRoles: {
+                        include: {
+                            role: true
+                        }
+                    },
                 }
             });
 
@@ -122,7 +135,33 @@ export class AuthService {
     }
 
     private generateTokens(user: any, res: Response) {
-        const payload = { username: user.username, sub: user.id, roleId: user.roleId };
+        // Trích xuất roles và permissions từ usersRoles và role
+        const roles = new Set<string>();
+        const permissions = new Set<string>();
+
+        // Lấy từ user.usersRoles (nếu có)
+        if (user.usersRoles) {
+            user.usersRoles.forEach((ur: any) => {
+                if (ur.role) {
+                    roles.add(ur.role.code);
+                    if (ur.role.rolesPermissions) {
+                        ur.role.rolesPermissions.forEach((rp: any) => {
+                            if (rp.permission) {
+                                permissions.add(rp.permission.code);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        const payload = {
+            username: user.username,
+            sub: user.id,
+            account_type: user.account_type,
+            roles: Array.from(roles),
+            permissions: Array.from(permissions)
+        };
 
         const accessToken = this.jwtService.sign(payload);
 
@@ -147,11 +186,12 @@ export class AuthService {
         });
 
         return {
-            message: 'Login success',
+            message: 'Đăng nhập thành công',
             user: {
                 id: user.id,
                 username: user.username,
-                roleCode: user.role.code
+                roles: Array.from(roles),
+                permissions: Array.from(permissions)
             }
         };
     }

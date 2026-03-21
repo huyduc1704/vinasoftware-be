@@ -6,125 +6,19 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// CORE / AUTH
+// ============================================================
+
 model Role {
   id               String              @id @default(uuid())
   code             String              @unique
   name             String              @unique
   description      String?
   is_active        Boolean             @default(true)
-  users            User[]
   rolesPermissions Roles_Permissions[]
   usersRoles       Users_Roles[]
-}
-
-model Employee {
-  id           String    @id @default(uuid())
-  employeeCode String    @unique
-  roleCode     String?
-  fullName     String
-  email        String?
-  gender       String?
-  dob          DateTime?
-  address      String?
-  phone        String?
-  joinDate     DateTime?
-  leaveDate    DateTime?
-  isActive     Boolean   @default(true)
-
-  // Region Relation
-  employeeRegions Employee_Regions[]
-
-  // Self-relations for hierarchy
-  areaManagerId String?
-  areaManager   Employee?  @relation("AreaManager", fields: [areaManagerId], references: [id])
-  areaSubs      Employee[] @relation("AreaManager")
-
-  seniorDeptManagerId String?
-  seniorDeptManager   Employee?  @relation("SeniorDeptManager", fields: [seniorDeptManagerId], references: [id])
-  seniorDeptSubs      Employee[] @relation("SeniorDeptManager")
-
-  deptManagerId String?
-  deptManager   Employee?  @relation("DeptManager", fields: [deptManagerId], references: [id])
-  deptSubs      Employee[] @relation("DeptManager")
-
-  managerId  String?
-  manager    Employee?  @relation("DirectManager", fields: [managerId], references: [id])
-  directSubs Employee[] @relation("DirectManager")
-
-  files Files[]
-  user  User?
-
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  contractEmployees Contract_Employees[]
-}
-
-model User {
-  id           String  @id @default(uuid())
-  username     String  @unique // Used for system login
-  password     String
-  account_type String  @default("ADMIN")
-  isActive     Boolean @default(true)
-
-  // Link to Employee profile
-  employeeId String   @unique
-  employee   Employee @relation(fields: [employeeId], references: [id])
-
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
-
-  contracts       Contracts[]
-  auditLogs       Audit_Logs[]
-  usersRoles      Users_Roles[]
-  importHistories Import_History[]
-  cskhNotes       Customer_Care_Notes[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Region {
-  id              String             @id @default(uuid())
-  code            String             @unique
-  name            String
-  address         String?
-  isActive        Boolean            @default(true)
-  employeeRegions Employee_Regions[]
-}
-
-model Employee_Regions {
-  employeeId String
-  regionCode String
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  region     Region   @relation(fields: [regionCode], references: [code])
-
-  isMain Boolean @default(false)
-
-  @@id([employeeId, regionCode])
-}
-
-model Audit_Logs {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  action    String
-  tableName String
-  oldData   Json?
-  newValue  Json?
-  createdAt DateTime @default(now())
-}
-
-model Files {
-  id         String     @id @default(uuid())
-  fileName   String
-  filePath   String
-  fileType   String
-  category   String // AVATAR, ID_FRONT, ID_BACK, CONTRACT_DOC
-  employeeId String?
-  employee   Employee?  @relation(fields: [employeeId], references: [id])
-  contractId String?
-  contract   Contracts? @relation(fields: [contractId], references: [id])
-  createdAt  DateTime   @default(now())
+  employees        Employee[]
 }
 
 model Permissions {
@@ -132,6 +26,9 @@ model Permissions {
   code             String              @unique
   name             String
   module           String?
+  resource         String?
+  action           String?
+  resource_name    String?
   rolesPermissions Roles_Permissions[]
 }
 
@@ -153,6 +50,133 @@ model Users_Roles {
   @@id([userId, roleId])
 }
 
+model User {
+  id           String  @id @default(uuid())
+  username     String  @unique
+  password     String
+  account_type String  @default("ADMIN")
+  isActive     Boolean @default(true)
+
+  employeeId String?   @unique
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+
+  customerId String?   @unique
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  contracts       Contracts[]
+  auditLogs       Audit_Logs[]
+  usersRoles      Users_Roles[]
+  importHistories Import_History[]
+  cskhNotes       Customer_Care_Notes[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Audit_Logs {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  tableName String
+  oldData   Json?
+  newValue  Json?
+  createdAt DateTime @default(now())
+}
+
+// ============================================================
+// ORGANIZATION
+// ============================================================
+
+model Region {
+  id      String  @id @default(uuid())
+  code    String  @unique
+  name    String
+  address String?
+  isActive Boolean @default(true)
+
+  // Trưởng khu vực của region này
+  managerId String?
+  manager   Employee? @relation("RegionManager", fields: [managerId], references: [id])
+
+  employeeRegions Employee_Regions[]
+}
+
+model Employee_Regions {
+  employeeId String
+  regionCode String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  region     Region   @relation(fields: [regionCode], references: [code])
+
+  isMain Boolean @default(false)
+
+  @@id([employeeId, regionCode])
+}
+
+// Model phòng ban — tối giản, chưa hard-link với toàn bộ hierarchy.
+// Dùng để lưu tên phòng + trưởng phòng hiện tại.
+// Nhân viên có thể gắn vào Department qua departmentId nếu cần sau này.
+model Department {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  code     String  @unique
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Employee {
+  id           String    @id @default(uuid())
+  employeeCode String    @unique
+  roleCode     String?
+  role         Role?     @relation(fields: [roleCode], references: [code])
+  fullName     String
+  email        String?
+  gender       String?
+  dob          DateTime?
+  address      String?
+  phone        String?
+  joinDate     DateTime?
+  leaveDate    DateTime?
+  isActive     Boolean   @default(true)
+
+  // Region
+  employeeRegions Employee_Regions[]
+
+  // Hierarchy (3 cấp: TPCC → TP → QL)
+  seniorDeptManagerId String?
+  seniorDeptManager   Employee?  @relation("SeniorDeptManager", fields: [seniorDeptManagerId], references: [id])
+  seniorDeptSubs      Employee[] @relation("SeniorDeptManager")
+
+  deptManagerId String?
+  deptManager   Employee?  @relation("DeptManager", fields: [deptManagerId], references: [id])
+  deptSubs      Employee[] @relation("DeptManager")
+
+  managerId  String?
+  manager    Employee?  @relation("DirectManager", fields: [managerId], references: [id])
+  directSubs Employee[] @relation("DirectManager")
+
+  // Là TKV của các region nào
+  managedRegions Region[] @relation("RegionManager")
+
+  files             Files[]
+  user              User?
+  contractEmployees Contract_Employees[]
+
+  // Snapshot relation cho Contract
+  contractsAsDeptManager       Contracts[] @relation("ContractDeptManager")
+  contractsAsSeniorDeptManager Contracts[] @relation("ContractSeniorDeptManager")
+  contractsAsManager           Contracts[] @relation("ContractManager")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// CUSTOMER
+// ============================================================
+
 model Customer {
   id             String      @id @default(uuid())
   fullName       String
@@ -165,52 +189,56 @@ model Customer {
   contracts      Contracts[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+  user           User?
 }
 
-model Contracts {
-  id           String @id @default(uuid())
-  contractCode String @unique
-  title        String
-  type         String // WEB, HOSTING, DOMAIN, ADS_FB, ADS_GG...
-  status       String @default("ACTIVE")
+// ============================================================
+// CONTRACTS & SERVICES
+// ============================================================
 
-  //-- Kế toán & Tài chính --
+model Contracts {
+  id           String         @id @default(uuid())
+  contractCode String         @unique
+  title        String
+  type         ContractType
+  status       ContractStatus @default(ACTIVE)
+  note         String?
+  features     String?
+
   receiptCode     String?
   signDate        DateTime?
   submissionDate  DateTime?
-  totalAmount     Decimal?  @db.Decimal(18, 2) //Tổng giá trị
-  vatAmount       Decimal?  @db.Decimal(18, 2) //Tổng tiền VAT
-  vatRate         Decimal?  @db.Decimal(5, 2) //% VAT
-  paidAmount      Decimal?  @db.Decimal(18, 2) //Đã thu
-  remainingAmount Decimal?  @db.Decimal(18, 2) //Còn lại
+  totalAmount     Decimal?  @db.Decimal(18, 2)
+  vatAmount       Decimal?  @db.Decimal(18, 2)
+  vatRate         Decimal?  @db.Decimal(5, 2)
+  paidAmount      Decimal?  @db.Decimal(18, 2)
+  remainingAmount Decimal?  @db.Decimal(18, 2)
 
-  //-- Thông tin chi tiết dịch vụ
-  serviceDetails Json?
-
-  //-- Lịch sử thanh toán (Đợt 1, Đợt 2, Bàn giao, ...)
-  paymentStages Json?
-
-  //-- Khách hàng_Hợp đồng --
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  //--Nhân viên_Hợp đồng--
   contractEmployees Contract_Employees[]
 
-  //--Snapshots quản lý của nhân viên tại thời điểm ký --
+  // Snapshots quản lý tại thời điểm ký
   regionCode          String?
   managerId           String?
+  manager             Employee? @relation("ContractManager", fields: [managerId], references: [id])
   deptManagerId       String?
+  deptManager         Employee? @relation("ContractDeptManager", fields: [deptManagerId], references: [id])
   seniorDeptManagerId String?
+  seniorDeptManager   Employee? @relation("ContractSeniorDeptManager", fields: [seniorDeptManagerId], references: [id])
 
-  createdById String // Người tạo
+  createdById String
   creator     User   @relation(fields: [createdById], references: [id])
 
-  renewals  Contract_Renewals[]
-  cskhNotes Customer_Care_Notes[]
-  files     Files[]
-  createdAt DateTime              @default(now())
-  updatedAt DateTime              @updatedAt
+  renewals      Contract_Renewals[]
+  cskhNotes     Customer_Care_Notes[]
+  files         Files[]
+  services      Service[]
+  paymentStages PaymentStage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Contract_Employees {
@@ -223,18 +251,14 @@ model Contract_Employees {
   @@id([contractId, employeeId])
 }
 
-model Import_History {
-  id          String   @id @default(uuid())
-  fileName    String
-  uploadById  String
-  uploader    User     @relation(fields: [uploadById], references: [id])
-  module      String //KETOAN
-  totalRows   Int      @default(0)
-  successRows Int      @default(0)
-  failedRows  Int      @default(0)
-  status      String //SUCCESS, FAILED, PARTIAL
-  errorLog    Json?
-  createdAt   DateTime @default(now())
+model Contract_Renewals {
+  id          String    @id @default(uuid())
+  contractId  String
+  contract    Contracts @relation(fields: [contractId], references: [id])
+  renewalDate DateTime
+  note        String?
+  processedBy String?
+  createdAt   DateTime  @default(now())
 }
 
 model Customer_Care_Notes {
@@ -247,14 +271,87 @@ model Customer_Care_Notes {
   createdAt   DateTime  @default(now())
 }
 
-model Contract_Renewals {
-  id          String    @id @default(uuid())
-  contractId  String
-  contract    Contracts @relation(fields: [contractId], references: [id])
-  renewalDate DateTime
-  note        String?
-  processedBy String?
-  createdAt   DateTime  @default(now())
+// --- Services (dịch vụ trong hợp đồng) ---
+
+model Service {
+  id         String    @id @default(uuid())
+  contractId String
+  contract   Contracts @relation(fields: [contractId], references: [id])
+
+  type      ServiceType
+  name      String?
+  order     Int?
+  price     Decimal?    @db.Decimal(18, 2)
+  vatRate   Decimal?    @db.Decimal(5, 2)
+  vatAmount Decimal?    @db.Decimal(18, 2)
+  total     Decimal?    @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now())
+
+  domainInfo  Domain?
+  hostingInfo Hosting?
+}
+
+model Domain {
+  id        String  @id @default(uuid())
+  serviceId String  @unique
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  domainName String
+  provider   String?
+  expiryDate DateTime?
+}
+
+model Hosting {
+  id        String  @id @default(uuid())
+  serviceId String  @unique
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  duration String?
+  storage  String?
+}
+
+model PaymentStage {
+  id         String    @id @default(uuid())
+  contractId String
+  contract   Contracts @relation(fields: [contractId], references: [id])
+
+  name     String
+  order    Int?
+  amount   Decimal?  @db.Decimal(18, 2)
+  paidDate DateTime?
+}
+
+// ============================================================
+// FILES & UTILITIES
+// ============================================================
+
+model Files {
+  id         String     @id @default(uuid())
+  fileName   String
+  filePath   String
+  publicId   String
+  fileType   String
+  category   String // AVATAR, ID_FRONT, ID_BACK, CONTRACT_DOC
+  employeeId String?
+  employee   Employee?  @relation(fields: [employeeId], references: [id])
+  contractId String?
+  contract   Contracts? @relation(fields: [contractId], references: [id])
+  createdAt  DateTime   @default(now())
+}
+
+model Import_History {
+  id          String   @id @default(uuid())
+  fileName    String
+  uploadById  String
+  uploader    User     @relation(fields: [uploadById], references: [id])
+  module      String
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  failedRows  Int      @default(0)
+  status      String // SUCCESS, FAILED, PARTIAL
+  errorLog    Json?
+  createdAt   DateTime @default(now())
 }
 
 model System_Settings {
@@ -262,4 +359,31 @@ model System_Settings {
   key         String  @unique
   value       String  @db.Text
   description String?
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum ContractType {
+  WEB
+  HOSTING
+  DOMAIN
+  ADS
+}
+
+enum ContractStatus {
+  ACTIVE
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceType {
+  WEB
+  HOSTING
+  DOMAIN
+  ADS_FB
+  ADS_GG
+  OTHER
 }

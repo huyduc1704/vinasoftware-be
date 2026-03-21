@@ -26,7 +26,7 @@ export class AuthController {
     @ApiOperation({ summary: 'Lấy thông tin user hiện tại và danh sách nhóm quyền của user đang login' })
     @Get('me')
     async getMe(@CurrentUser() user: any) {
-        return this.authService.getMe(user.userId);
+        return this.authService.getMe(user.id);
     }
 
     @ApiOperation({ summary: 'Cấp lại Access Token mới khi token cũ hết hạn' })
@@ -52,7 +52,7 @@ export class AuthController {
         @CurrentUser() user: any,
         @Body() changePasswordDto: ChangePasswordDto,
     ) {
-        return this.authService.changePassword(user.userId, changePasswordDto);
+        return this.authService.changePassword(user.id, changePasswordDto);
     }
 
     @ApiOperation({ summary: 'Đăng xuất khỏi hệ thống' })

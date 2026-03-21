@@ -1,26 +1,76 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(private readonly prisma: PrismaService) { }
+
+  async findAllAdmins() {
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { employeeId: { not: null } },
+          { account_type: 'ADMIN' }
+        ]
+      },
+      include: {
+        employee: true,
+        usersRoles: {
+          include: { role: true }
+        },
+      },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
-  findAll() {
-    return `This action returns all users`;
+  //Lấy danh sách tài khoản khách (Customer)
+  async findAllGuests() {
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { customerId: { not: null } },
+          { account_type: 'GUEST' }
+        ]
+      },
+      include: {
+        customer: true,
+        usersRoles: {
+          include: { role: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+  async findOne(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        employee: true,
+        customer: true,
+        usersRoles: {
+          include: { role: true }
+        }
+      }
+    });
+
+    if (!user) throw new NotFoundException('Không tìm thấy tài khoản');
+    return user;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async update(id: string, updateUserDto: UpdateUserDto) {
+    await this.findOne(id);
+    return this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(id: string) {
+    await this.findOne(id);
+    return this.prisma.user.delete({
+      where: { id },
+    });
   }
 }

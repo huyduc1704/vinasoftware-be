@@ -1,27 +1,33 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
-import { jwtConstants } from '../constants';
 import { Request } from 'express';
+
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     constructor() {
         super({
             jwtFromRequest: ExtractJwt.fromExtractors([
                 (request: Request) => {
-                    let token = null;
-                    if (request && request.cookies) {
-                        token = request.cookies['access_token'];
+                    let data = request?.cookies?.['access_token'];
+                    if (!data) {
+                        return ExtractJwt.fromAuthHeaderAsBearerToken()(request);
                     }
-                    return token;
-                }
+                    return data;
+                },
             ]),
             ignoreExpiration: false,
-            secretOrKey: jwtConstants.secret,
+            secretOrKey: process.env.JWT_SECRET as string,
         });
     }
-
     async validate(payload: any) {
-        return { userId: payload.sub, username: payload.username, roleId: payload.roleId };
+        // Trả về cả mảng roles và permissions
+        return {
+            id: payload.sub,
+            username: payload.username,
+            account_type: payload.account_type,
+            roles: payload.roles,
+            permissions: payload.permissions
+        };
     }
 }

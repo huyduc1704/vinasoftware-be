@@ -4,6 +4,7 @@ import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { GetEmployeesFilterDto } from './dto/get-employees-filter.dto';
 
 @ApiTags('Quản lý nhân sự')
 @ApiBearerAuth()
@@ -12,21 +13,10 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) { }
 
-  @ApiOperation({ summary: 'Lấy thông tin của nhân viên các cấp' })
-  @ApiQuery({ name: 'roleCode', required: false, description: 'Lọc theo roleCode. Hỗ trợ nhiều giá trị phân tách bằng dấu phẩy. VD: NVKD,TRUONG_PHONG,QUAN_LY' })
-  @ApiQuery({ name: 'areaManagerId', required: false, description: 'Lọc theo Trưởng khu vực (Area Manager)' })
-  @ApiQuery({ name: 'seniorDeptManagerId', required: false, description: 'Lọc theo Trưởng phòng cấp cao' })
-  @ApiQuery({ name: 'deptManagerId', required: false, description: 'Lọc theo Trưởng phòng' })
-  @ApiQuery({ name: 'managerId', required: false, description: 'Lọc theo Quản lý trực tiếp' })
+  @ApiOperation({ summary: 'Lấy thông tin và tìm kiếm nhân viên các cấp' })
   @Get()
-  getAllEmployees(
-    @Query('roleCode') roleCode?: string,
-    @Query('areaManagerId') areaManagerId?: string,
-    @Query('seniorDeptManagerId') seniorDeptManagerId?: string,
-    @Query('deptManagerId') deptManagerId?: string,
-    @Query('managerId') managerId?: string,
-  ) {
-    return this.employeesService.getAllEmployees(roleCode, areaManagerId, seniorDeptManagerId, deptManagerId, managerId);
+  getAllEmployees(@Query() filterDto: GetEmployeesFilterDto) {
+    return this.employeesService.getAllEmployees(filterDto);
   }
 
   @ApiOperation({ summary: 'Thông tin chi tiết của 1 nhân viên' })

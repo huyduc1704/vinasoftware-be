@@ -3,65 +3,109 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { GetEmployeesFilterDto } from './dto/get-employees-filter.dto';
 
 @Injectable()
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async getAllEmployees(
-    roleCode?: string,
-    areaManagerId?: string,
-    seniorDeptManagerId?: string,
-    deptManagerId?: string,
-    managerId?: string,
-  ) {
+  async getAllEmployees(filterDto: GetEmployeesFilterDto) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      roleCode,
+      searchName,
+      // ID các cấp quản lý
+      managerId,
+      deptManagerId,
+      seniorDeptManagerId,
+      // Tên các cấp quản lý (để search)
+      managerName,
+      deptManagerName,
+      seniorDeptManagerName,
+    } = filterDto;
+
+    const skip = (page - 1) * limit;
     const whereCondition: any = {};
 
+    // 1. Tìm kiếm tổng hợp (Search across Name, Code, Email)
+    if (search) {
+      whereCondition.OR = [
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { employeeCode: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // 2. Filter theo tên riêng lẻ 
+    if (searchName) {
+      whereCondition.fullName = { contains: searchName, mode: 'insensitive' };
+    }
+
+    // 3. Filter theo Role Code
     if (roleCode) {
       const roles = roleCode.split(',').map(r => r.trim()).filter(Boolean);
       whereCondition.roleCode = roles.length === 1 ? roles[0] : { in: roles };
     }
 
-    if (areaManagerId) {
-      whereCondition.areaManagerId = areaManagerId;
+    // 4. Filter theo ID quản lý
+    if (managerId) whereCondition.managerId = managerId;
+    if (deptManagerId) whereCondition.deptManagerId = deptManagerId;
+    if (seniorDeptManagerId) whereCondition.seniorDeptManagerId = seniorDeptManagerId;
+
+    // 5. Filter theo tên quản lý (Relation search)
+    if (managerName) {
+      whereCondition.manager = { fullName: { contains: managerName, mode: 'insensitive' } };
+    }
+    if (deptManagerName) {
+      whereCondition.deptManager = { fullName: { contains: deptManagerName, mode: 'insensitive' } };
+    }
+    if (seniorDeptManagerName) {
+      whereCondition.seniorDeptManager = { fullName: { contains: seniorDeptManagerName, mode: 'insensitive' } };
     }
 
-    if (seniorDeptManagerId) {
-      whereCondition.seniorDeptManagerId = seniorDeptManagerId;
-    }
+    //Query song song để lấy data và tổng số lượng
+    const [data, total] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        include: {
+          user: { include: { usersRoles: { include: { role: { select: { name: true, code: true } } } } } },
+          employeeRegions: { include: { region: { include: { manager: { select: { fullName: true, employeeCode: true } } } } } },
+          manager: { select: { fullName: true, employeeCode: true } },
+          deptManager: { select: { fullName: true, employeeCode: true } },
+          seniorDeptManager: { select: { fullName: true, employeeCode: true } },
+          files: true,
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      this.prisma.employee.count({ where: whereCondition })
+    ]);
 
-    if (deptManagerId) {
-      whereCondition.deptManagerId = deptManagerId;
-    }
-
-    if (managerId) {
-      whereCondition.managerId = managerId;
-    }
-
-    return this.prisma.employee.findMany({
-      where: whereCondition,
-      include: {
-        user: { include: { role: { select: { name: true, code: true } } } },
-        employeeRegions: { include: { region: true } },
-        manager: { select: { fullName: true, employeeCode: true } },
-        deptManager: { select: { fullName: true, employeeCode: true } },
-        seniorDeptManager: { select: { fullName: true, employeeCode: true } },
-        areaManager: { select: { fullName: true, employeeCode: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+        limit
+      }
+    };
   }
 
   async getEmployeeById(id: string) {
     const employee = await this.prisma.employee.findUnique({
       where: { id },
       include: {
-        user: { include: { role: true } },
-        employeeRegions: { include: { region: true } },
+        user: { include: { usersRoles: { include: { role: true } } } },
+        employeeRegions: { include: { region: { include: { manager: true } } } },
         manager: true,
         deptManager: true,
         seniorDeptManager: true,
-        areaManager: true,
+        files: true,
       }
     });
 
@@ -71,7 +115,7 @@ export class EmployeesService {
   }
 
   async createEmployee(data: CreateEmployeeDto) {
-    const { employeeCode, password, roleId, regionCode, roleCode, ...restData } = data;
+    const { employeeCode, password, roleIds, regionCode, roleCode, ...restData } = data;
 
     //check trung employeeCode
     const exist = await this.prisma.employee.findUnique({ where: { employeeCode } });
@@ -80,12 +124,12 @@ export class EmployeesService {
     const createData: any = {
       ...restData,
       roleCode: roleCode || null,
-      managerId: restData.managerId || null,
+      managerId: restData.managerId || restData.areaManagerId || null,
       deptManagerId: restData.deptManagerId || null,
       seniorDeptManagerId: restData.seniorDeptManagerId || null,
-      areaManagerId: restData.areaManagerId || null,
       employeeCode,
     };
+    delete createData.areaManagerId;
 
     if (regionCode) {
       const regions = Array.isArray(regionCode) ? regionCode : [regionCode];
@@ -101,8 +145,17 @@ export class EmployeesService {
       data: createData,
     });
 
+    // Sync Region manager if role is TRUONG_KHU_VUC
+    if (roleCode === 'TRUONG_KHU_VUC' && regionCode) {
+      const regions = Array.isArray(regionCode) ? regionCode : [regionCode];
+      await this.prisma.region.updateMany({
+        where: { code: { in: regions } },
+        data: { managerId: newEmployee.id }
+      });
+    }
+
     // Automatically create a user account if login info is provided
-    if (password && roleId) {
+    if (password) {
       const salt = await bcrypt.genSalt();
       const hashedPassword = await bcrypt.hash(password, salt);
       await this.prisma.user.create({
@@ -110,7 +163,9 @@ export class EmployeesService {
           username: employeeCode,
           password: hashedPassword,
           employeeId: newEmployee.id,
-          roleId: roleId,
+          usersRoles: {
+            create: roleIds?.map(id => ({ roleId: id })) || []
+          }
         }
       });
     }
@@ -122,16 +177,17 @@ export class EmployeesService {
     const employee = await this.prisma.employee.findUnique({ where: { id }, include: { user: true } });
     if (!employee) throw new NotFoundException('Khong tim thay nhan vien');
 
-    const { password, roleId, employeeCode, regionCode, roleCode, ...employeeData } = data;
+    const { password, roleIds, employeeCode, regionCode, roleCode, ...employeeData } = data;
 
+    const managerId = employeeData.managerId || employeeData.areaManagerId;
     const formattedData: any = {
       ...employeeData,
       roleCode: roleCode || undefined,
-      managerId: employeeData.managerId === '' ? null : employeeData.managerId,
+      managerId: managerId === '' ? null : (managerId || undefined),
       deptManagerId: employeeData.deptManagerId === '' ? null : employeeData.deptManagerId,
       seniorDeptManagerId: employeeData.seniorDeptManagerId === '' ? null : employeeData.seniorDeptManagerId,
-      areaManagerId: employeeData.areaManagerId === '' ? null : employeeData.areaManagerId,
     };
+    delete formattedData.areaManagerId;
 
     if (regionCode) {
       const regions = Array.isArray(regionCode) ? regionCode : [regionCode];
@@ -153,40 +209,84 @@ export class EmployeesService {
 
       if (isBeingDemoted) {
         // GIÁNG CHỨC → Cắt đứt tất cả cấp dưới
-        await Promise.all([
+        await this.prisma.$transaction([
           this.prisma.employee.updateMany({ where: { managerId: id }, data: { managerId: null } }),
           this.prisma.employee.updateMany({ where: { deptManagerId: id }, data: { deptManagerId: null } }),
           this.prisma.employee.updateMany({ where: { seniorDeptManagerId: id }, data: { seniorDeptManagerId: null } }),
-          this.prisma.employee.updateMany({ where: { areaManagerId: id }, data: { areaManagerId: null } }),
+          // Nếu đang là trưởng khu vực, gỡ bỏ khỏi Region
+          this.prisma.region.updateMany({ where: { managerId: id }, data: { managerId: null } }),
         ]);
       }
-      // THĂNG CHỨC → Không cần làm gì, cấp dưới vẫn giữ nguyên
+    }
+
+    // Xử lý khi khu vực thay đổi hoặc duy trì role TRUONG_KHU_VUC
+    const finalRoleCode = roleCode || employee.roleCode;
+    if (finalRoleCode === 'TRUONG_KHU_VUC') {
+      if (regionCode) {
+        // Nếu có cập nhật khu vực mới
+        const newRegions = Array.isArray(regionCode) ? regionCode : [regionCode];
+        await this.prisma.$transaction([
+          // Gỡ bỏ khỏi các khu vực cũ (nếu đang là manager)
+          this.prisma.region.updateMany({
+            where: { managerId: id },
+            data: { managerId: null }
+          }),
+          // Gán vào các khu vực mới
+          this.prisma.region.updateMany({
+            where: { code: { in: newRegions } },
+            data: { managerId: id }
+          })
+        ]);
+      } else if (roleCode === 'TRUONG_KHU_VUC' && roleCode !== employee.roleCode) {
+        // Nếu thăng chức lên TRUONG_KHU_VUC mà không đổi regionCode (lấy region hiện tại)
+        const currentRegions = await this.prisma.employee_Regions.findMany({ where: { employeeId: id } });
+        const currentRegionCodes = currentRegions.map(r => r.regionCode);
+        await this.prisma.region.updateMany({
+          where: { code: { in: currentRegionCodes } },
+          data: { managerId: id }
+        });
+      }
     }
 
     // Update the employee profile
     const updatedEmployee = await this.prisma.employee.update({
       where: { id },
       data: formattedData,
+      include: {
+        user: { include: { usersRoles: { include: { role: { select: { name: true, code: true } } } } } },
+        employeeRegions: { include: { region: { include: { manager: { select: { fullName: true, employeeCode: true } } } } } },
+        manager: { select: { fullName: true, employeeCode: true } },
+        deptManager: { select: { fullName: true, employeeCode: true } },
+        seniorDeptManager: { select: { fullName: true, employeeCode: true } },
+        files: true,
+      },
     });
 
-    // Handle user account updates if password or roleId is provided
-    if (password || roleId) {
+    // Handle user account updates if password or roleIds is provided
+    if (password || roleIds) {
       const userUpdateData: any = {};
+
       if (password) {
         const salt = await bcrypt.genSalt();
         userUpdateData.password = await bcrypt.hash(password, salt);
       }
-      if (roleId) {
-        userUpdateData.roleId = roleId;
-      }
 
       if (employee.user) {
-        // Update existing user
+        // Update existing user roles
+        if (roleIds) {
+          // Delete old roles connection
+          await this.prisma.users_Roles.deleteMany({ where: { userId: employee.user.id } });
+          // Assign new roles
+          userUpdateData.usersRoles = {
+            create: roleIds.map(id => ({ roleId: id }))
+          };
+        }
+
         await this.prisma.user.update({
           where: { id: employee.user.id },
           data: userUpdateData,
         });
-      } else if (password && roleId) {
+      } else if (password) {
         // Create new user if they didn't have one
         const salt = await bcrypt.genSalt();
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -195,7 +295,9 @@ export class EmployeesService {
             username: employee.employeeCode,
             password: hashedPassword,
             employeeId: employee.id,
-            roleId: roleId,
+            usersRoles: {
+              create: roleIds?.map(id => ({ roleId: id })) || []
+            }
           }
         });
       }
@@ -224,9 +326,10 @@ export class EmployeesService {
       data: { seniorDeptManagerId: null },
     });
 
-    await this.prisma.employee.updateMany({
-      where: { areaManagerId: id },
-      data: { areaManagerId: null },
+    // Clear Region manager
+    await this.prisma.region.updateMany({
+      where: { managerId: id },
+      data: { managerId: null },
     });
 
     if (employee.user) {

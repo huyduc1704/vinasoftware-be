@@ -1,6 +1,44 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsArray, IsDecimal, IsJSON, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
+import { ContractType, ServiceType } from "@prisma/client";
+
+// DTO cho DomainInfo & Hosting Info
+export class DomainInfoDto {
+    @IsString() domainName: string;
+    @IsOptional() @IsString() provider?: string;
+    @IsOptional() @IsString() expiryDate?: string;
+}
+
+export class HostingInfoDto {
+    @IsOptional() @IsString() duration?: string;
+    @IsOptional() @IsString() storage?: string;
+}
+
+// DTO cho Service
+export class ContractServiceDto {
+    @IsEnum(ServiceType) type: ServiceType;
+    @IsString() name: string;
+    @IsOptional() @IsNumber() price?: number;
+    @IsOptional() @IsNumber() vatRate?: number;
+    @IsOptional() @IsNumber() vatAmount?: number;
+    @IsOptional() @IsNumber() totalAmount?: number;
+
+    @IsOptional() @ValidateNested() @Type(() => DomainInfoDto)
+    domainInfo?: DomainInfoDto;
+    @IsOptional() @ValidateNested() @Type(() => HostingInfoDto)
+    hostingInfo?: HostingInfoDto;
+}
+
+// DTO chi PaymentStage
+export class ContractPaymentStageDto {
+    @IsString() name: string;
+    @IsOptional() @IsNumber() order?: number;
+    @IsOptional() @IsNumber() amount?: number;
+    @IsOptional() @IsString() paidDate?: string;
+}
+
+
 
 export class ContractEmployeeDto {
     @IsString() employeeId: string;
@@ -50,10 +88,10 @@ export class CreateContractDto {
     @IsString()
     title: string;
 
-    @ApiProperty({ description: 'WEB, HOSTING, DOMAIN, ADS_FB, ADS_GG,....' })
+    @ApiProperty({ description: 'Loại hợp đồng', enum: ContractType })
     @IsNotEmpty()
-    @IsString()
-    type: string;
+    @IsEnum(ContractType)
+    type: ContractType;
 
     @ApiProperty({ required: false })
     @IsOptional()
@@ -95,14 +133,6 @@ export class CreateContractDto {
     @IsNumber()
     remainingAmount?: number;
 
-    @ApiProperty({ required: false, type: Object })
-    @IsOptional()
-    serviceDetails?: any;
-
-    @ApiProperty({ required: false, type: Object })
-    @IsOptional()
-    paymentStages?: any;
-
     @ApiProperty({ required: false, description: 'ID khách hàng đã có sẵn. Nếu không có thì truyền customerData để tạo mới.' })
     @IsOptional()
     @IsString()
@@ -141,4 +171,17 @@ export class CreateContractDto {
     @Type(() => ContractEmployeeDto)
     employees?: ContractEmployeeDto[];
 
+    @ApiProperty({ description: 'Service lists', type: [ContractServiceDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ContractServiceDto)
+    services?: ContractServiceDto[];
+
+    @ApiProperty({ description: 'Payment Stages', type: [ContractPaymentStageDto] })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => ContractPaymentStageDto)
+    paymentStages?: ContractPaymentStageDto[];
 }

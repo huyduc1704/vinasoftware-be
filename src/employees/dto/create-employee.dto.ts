@@ -47,10 +47,10 @@ export class CreateEmployeeDto {
     @IsDateString()
     joinDate?: string;
 
-    @ApiProperty({ description: 'ID của Role được gán (Nếu cấp quyền đăng nhập)', required: false })
+    @ApiProperty({ description: 'Danh sách ID của các Nhóm quyền được gán (Nếu cấp quyền đăng nhập)', required: false, type: [String] })
     @IsOptional()
-    @IsString()
-    roleId?: string;
+    @IsString({ each: true })
+    roleIds?: string[];
 
     @ApiProperty({ description: 'Mã Khu vực (Vùng)', required: false, type: [String] })
     @IsOptional()
@@ -62,15 +62,15 @@ export class CreateEmployeeDto {
     @IsString()
     managerId?: string;
 
+    @ApiProperty({ description: 'ID Truong khu vuc (Alias cho managerId)', required: false })
+    @IsOptional()
+    @IsString()
+    areaManagerId?: string;
+
     @ApiProperty({ description: 'ID truong phong', required: false })
     @IsOptional()
     @IsString()
     deptManagerId?: string;
-
-    @ApiProperty({ description: 'ID Truong khu vuc (Area Manager)', required: false })
-    @IsOptional()
-    @IsString()
-    areaManagerId?: string;
 
     @ApiProperty({ description: 'ID truong phong cap cap', required: false })
     @IsOptional()
