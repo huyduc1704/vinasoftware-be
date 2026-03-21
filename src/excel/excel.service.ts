@@ -78,38 +78,135 @@ export class ExcelService {
             where: whereCondition,
             include: {
                 customer: true,
+                contractEmployees: {
+                    include: {
+                        employee: true
+                    }
+                },
+                manager: true,
+                deptManager: true,
+                services: {
+                    include: {
+                        domainInfo: true,
+                        hostingInfo: true
+                    }
+                },
+                paymentStages: true,
                 creator: true,
             }
         });
 
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet(`Hợp đồng ${month ? 'tháng' + month : 'năm' + currentYear}`);
+        const worksheet = workbook.addWorksheet(`Hợp đồng ${month ? 'tháng ' + month : 'năm ' + currentYear}`);
 
         worksheet.columns = [
-            { header: 'Mã HĐ', key: 'contractCode', width: 15 },
-            { header: 'Tiêu đề', key: 'title', width: 30 },
-            { header: 'Khách hàng', key: 'customer', width: 25 },
-            { header: 'Ngày ký', key: 'signDate', width: 15 },
-            { header: 'Ngày nộp', key: 'submissionDate', width: 15 },
-            { header: 'Tổng tiền', key: 'totalAmount', width: 15 },
-            { header: 'Đã thu', key: 'paidAmount', width: 15 },
-            { header: 'Còn lại', key: 'remainingAmount', width: 15 },
-            { header: 'Trạng thái', key: 'status', width: 15 }
+            { header: 'STT', key: 'stt', width: 5 },                                 // 1
+            { header: 'Số phiếu thu', key: 'receiptCode', width: 15 },               // 2
+            { header: 'Mã nhân viên', key: 'employeeCode', width: 15 },              // 3
+            { header: 'Tên NVKD', key: 'employeeName', width: 25 },                  // 4
+            { header: 'Số hợp đồng', key: 'contractCode', width: 20 },               // 5
+            { header: 'Phòng', key: 'deptManagerName', width: 20 },                  // 6
+            { header: 'Khu vực', key: 'regionCode', width: 15 },                     // 7
+            { header: 'Ngày nộp', key: 'submissionDate', width: 15 },                // 8
+            { header: 'Thiết kế web', key: 'webTotal', width: 15 },                  // 9
+            { header: 'Lần 1', key: 'pmL1', width: 15 },                             // 10
+            { header: 'Lần 2', key: 'pmL2', width: 15 },                             // 11
+            { header: 'Bàn giao', key: 'pmDelivery', width: 15 },                    // 12
+            { header: 'Nâng cấp web', key: 'webUpgrade', width: 15 },                // 13
+            { header: 'Treo 50%', key: 'treo50', width: 15 },                        // 14
+            { header: 'Hosting', key: 'hostingAmount', width: 15 },                  // 15
+            { header: 'Tên miền', key: 'domainAmount', width: 15 },                  // 16
+            { header: 'Tổng giá trị', key: 'totalAmount', width: 15 },               // 17
+            { header: 'VAT', key: 'vatAmount', width: 15 },                          // 18
+            { header: 'Tổng thanh toán', key: 'totalPayment', width: 15 },           // 19 (Assuming total + VAT)
+            { header: 'Đã thu', key: 'paidAmount', width: 15 },                      // 20
+            { header: 'Host (Đã thu)', key: 'paidHost', width: 15 },                 // 21
+            { header: 'Host VAT (Đã thu)', key: 'paidHostVAT', width: 15 },          // 22
+            { header: 'Web (Đã thu)', key: 'paidWeb', width: 15 },                   // 23
+            { header: 'Tên miền (Đã thu)', key: 'paidDomain', width: 15 },           // 24
+            { header: 'Còn lại', key: 'remainingAmount', width: 15 },                // 25
+            { header: 'Bàn giao', key: 'deliveryStatus', width: 15 },                // 26
+            { header: 'Chức năng', key: 'features', width: 30 },                     // 27
+            { header: 'Ghi chú', key: 'note', width: 30 },                           // 28
+            { header: 'Tên khách hàng', key: 'customerName', width: 30 },            // 29
+            { header: 'SĐT', key: 'customerPhone', width: 15 },                      // 30
+            { header: 'Mail', key: 'customerEmail', width: 25 },                     // 31
+            { header: 'MST', key: 'customerTaxCode', width: 15 },                    // 32
+            { header: 'Địa chỉ', key: 'customerAddress', width: 30 },                // 33
+            { header: 'Ngày sinh', key: 'customerDob', width: 15 },                  // 34
+            { header: 'Địa chỉ tên miền', key: 'domainName', width: 25 },            // 35
+            { header: 'Đơn vị đăng ký', key: 'domainProvider', width: 20 },          // 36
+            { header: 'Ngày hết hạn', key: 'domainExpiry', width: 15 },              // 37
+            { header: 'Thời gian (Host)', key: 'hostingDuration', width: 15 },       // 38
+            { header: 'Dung lượng (Host)', key: 'hostingStorage', width: 15 },       // 39
         ];
 
         worksheet.getRow(1).font = { bold: true };
+        let rowIndex = 1;
 
         contracts.forEach(c => {
+            rowIndex++;
+            // Lấy từ contractEmployees (mới) HOẶC fallback sang manager (cũ)
+            const mainEmp = c.contractEmployees?.find(ce => ce.isMain)?.employee || c.manager;
+
+            // Extract Services
+            const webService = c.services?.find(s => s.type === 'WEB' && s.name?.includes('Thiết kế'));
+            const webUpgradeService = c.services?.find(s => s.type === 'WEB' && s.name?.includes('Nâng cấp'));
+            const hostingService = c.services?.find(s => s.type === 'HOSTING');
+            const domainService = c.services?.find(s => s.type === 'DOMAIN');
+
+            // Extract Payment Stages
+            const pmL1 = c.paymentStages?.find(p => p.name === 'Lần 1')?.amount || 0;
+            const pmL2 = c.paymentStages?.find(p => p.name === 'Lần 2')?.amount || 0;
+            const pmDelivery = c.paymentStages?.find(p => p.name === 'Bàn giao')?.amount || 0;
+
             worksheet.addRow({
+                stt: rowIndex - 1,
+                receiptCode: c.receiptCode || '',
+                employeeCode: mainEmp?.employeeCode || '',
+                employeeName: mainEmp?.fullName || '',
                 contractCode: c.contractCode,
-                title: c.title,
-                customer: c.customer.fullName,
-                signDate: c.signDate ? c.signDate.toISOString().split('T')[0] : '',
+                deptManagerName: c.deptManager?.fullName || '',
+                regionCode: c.regionCode || '',
                 submissionDate: c.submissionDate ? c.submissionDate.toISOString().split('T')[0] : '',
-                totalAmount: Number(c.totalAmount || 0).toLocaleString('vi-VN'),
-                paidAmount: Number(c.paidAmount || 0).toLocaleString('vi-VN'),
-                remainingAmount: Number(c.remainingAmount || 0).toLocaleString('vi-VN'),
-                status: c.status
+
+                webTotal: webService?.total || 0,
+                pmL1: pmL1,
+                pmL2: pmL2,
+                pmDelivery: pmDelivery,
+                webUpgrade: webUpgradeService?.total || 0,
+                treo50: 0, // Placeholder
+                hostingAmount: hostingService?.total || 0,
+                domainAmount: domainService?.total || 0,
+
+                totalAmount: c.totalAmount || 0,
+                vatAmount: c.vatAmount || 0,
+                totalPayment: Number(c.totalAmount || 0) + Number(c.vatAmount || 0),
+                paidAmount: c.paidAmount || 0,
+
+                paidHost: '', // Detailed break downs usually require manual entry or complex logic
+                paidHostVAT: '',
+                paidWeb: '',
+                paidDomain: '',
+
+                remainingAmount: c.remainingAmount || 0,
+                deliveryStatus: '', // Placeholder
+                features: c.features || '',
+                note: c.note || '',
+
+                customerName: c.customer.fullName,
+                customerPhone: c.customer.phone || '',
+                customerEmail: c.customer.email || '',
+                customerTaxCode: c.customer.taxCode || '',
+                customerAddress: c.customer.address || '',
+                customerDob: c.customer.dob ? c.customer.dob.toISOString().split('T')[0] : '',
+
+                domainName: domainService?.domainInfo?.domainName || '',
+                domainProvider: domainService?.domainInfo?.provider || '',
+                domainExpiry: domainService?.domainInfo?.expiryDate ? domainService?.domainInfo?.expiryDate.toISOString().split('T')[0] : '',
+
+                hostingDuration: hostingService?.hostingInfo?.duration || '',
+                hostingStorage: hostingService?.hostingInfo?.storage || ''
             });
         });
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -118,6 +215,7 @@ export class ExcelService {
         await workbook.xlsx.write(res);
         res.end();
     }
+
     /**
      * Nhập nhân viên từ file Excel
      */
@@ -462,7 +560,11 @@ export class ExcelService {
                 const dbEmployees: any[] = [];
                 for (const empRaw of data.employees) {
                     let emp = await this.prisma.employee.findUnique({ where: { employeeCode: empRaw.employeeCode } });
-                    if (emp) dbEmployees.push(emp);
+                    if (emp) {
+                        dbEmployees.push(emp);
+                    } else {
+                        errors.push({ row: data.rowNumber, contractCode: data.contractCode, message: `Lưu ý: Không tìm thấy nhân viên mã '${empRaw.employeeCode}' trong hệ thống. Vui lòng thêm nhân viên này trước!` });
+                    }
                 }
 
                 // Main Manager uses the baseRow (first entry)

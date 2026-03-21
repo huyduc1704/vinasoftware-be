@@ -55,39 +55,47 @@ export class UploadController {
         @Body('contractId') contractId?: string,
         @Body('category') category: string = 'OTHERS',
     ) {
-        //validate file existed
-        if (!file) {
-            throw new BadRequestException('Không có file nào được tải lên');
-        }
-        //Validate MIME type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-        if (!allowedTypes.includes(file.mimetype)) {
-            throw new BadRequestException('Định dạng file không hợp lệ (Chỉ nhân JPG, PNG, WEBP, PDF)');
-        }
-        //validate logic of relationship (Chỉ 1 trong 2)
-        if (employeeId && contractId) {
-            throw new BadRequestException('File chỉ được liên kết với nhân viên hoặc hợp đồng, không được cả hai');
-        }
-
-        //Định nghĩa folder structure
-        const subFolder = employeeId ? 'employees' : (contractId ? 'contracts' : 'others');
-        const folder = `vinasoftware/${subFolder}`;
-
-        const result = await this.cloudinaryService.uploadImage(file, folder);
-
-        //Luu vao Db
-        const savedFile = await this.prisma.files.create({
-            data: {
-                fileName: file.originalname,
-                filePath: result.secure_url,
-                publicId: result.public_id,
-                fileType: file.mimetype,
-                category: category || 'OTHERS',
-                employeeId: employeeId || null,
-                contractId: contractId || null,
+        try {
+            //validate file existed
+            if (!file) {
+                throw new BadRequestException('Không có file nào được tải lên');
             }
-        });
-        return savedFile;
+            //Validate MIME type
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+            if (!allowedTypes.includes(file.mimetype)) {
+                throw new BadRequestException('Định dạng file không hợp lệ (Chỉ nhân JPG, PNG, WEBP, PDF)');
+            }
+            //validate logic of relationship (Chỉ 1 trong 2)
+            if (employeeId && contractId) {
+                throw new BadRequestException('File chỉ được liên kết với nhân viên hoặc hợp đồng, không được cả hai');
+            }
+
+            //Định nghĩa folder structure
+            const subFolder = employeeId ? 'employees' : (contractId ? 'contracts' : 'others');
+            const folder = `vinasoftware/${subFolder}`;
+
+            console.log(`[Upload] Starting upload for file: ${file.originalname}, folder: ${folder}`);
+            const result = await this.cloudinaryService.uploadImage(file, folder);
+            console.log(`[Upload] Cloudinary upload success: ${result.secure_url}`);
+
+            //Luu vao Db
+            const savedFile = await this.prisma.files.create({
+                data: {
+                    fileName: file.originalname,
+                    filePath: result.secure_url,
+                    publicId: result.public_id,
+                    fileType: file.mimetype,
+                    category: category || 'OTHERS',
+                    employeeId: employeeId || null,
+                    contractId: contractId || null,
+                }
+            });
+            console.log(`[Upload] DB save success, ID: ${savedFile.id}`);
+            return savedFile;
+        } catch (error) {
+            console.error('[Upload Error]', error);
+            throw error; // Rethrow to maintain standard error response
+        }
     }
 
     @ApiOperation({ summary: 'Xóa file trên Cloudinary bằng public_id' })
