@@ -42,7 +42,7 @@ Dự án sử dụng **PostgreSQL**. Bạn có thể dùng database trên Cloud 
 
 ---
 
-## 💻 Bước 2: Chạy Dự Án Cục Bộ (Không dùng Docker)
+## Bước 2: Chạy Dự Án Cục Bộ (Không dùng Docker)
 
 ### Yêu cầu
 - [Node.js](https://nodejs.org/) v18+
@@ -166,7 +166,7 @@ Sau khi server chạy, truy cập tài liệu API đầy đủ tại:
 
 ---
 
-## 📄 Cấu Trúc Thư Mục
+## Cấu Trúc Thư Mục
 
 ```text
 vinasoftware-accounting/
