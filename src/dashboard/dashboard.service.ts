@@ -102,33 +102,69 @@ export class DashboardService {
     const startDate = new Date(currentYear, 0, 1);
     const endDate = new Date(currentYear, 11, 31, 23, 59, 59);
 
+    // 1. Lấy dữ liệu Doanh thu (Hợp đồng đã ký/nộp trong năm)
     const contracts = await this.prisma.contracts.findMany({
       where: {
-        signDate: {
-          gte: startDate,
-          lte: endDate,
-        },
+        OR: [
+          { signDate: { gte: startDate, lte: endDate } },
+          {
+            AND: [
+              { signDate: null },
+              { submissionDate: { gte: startDate, lte: endDate } },
+            ],
+          },
+        ],
       },
       select: {
         totalAmount: true,
-        paidAmount: true,
         signDate: true,
+        submissionDate: true,
+      },
+    });
+
+    // 2. Lấy dữ liệu Thực thu (Các phiếu thu đã được thanh toán hoặc tạo trong năm)
+    const receipts = await this.prisma.receipt.findMany({
+      where: {
+        OR: [
+          { paidDate: { gte: startDate, lte: endDate } },
+          {
+            AND: [
+              { paidDate: null },
+              { createdAt: { gte: startDate, lte: endDate } },
+            ],
+          },
+        ],
+      },
+      select: {
+        amount: true,
+        paidDate: true,
+        createdAt: true,
       },
     });
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-    const chartData = months.map((month, index) => ({
+    const chartData = months.map((month) => ({
       name: month,
       doanhThu: 0,
       thucThu: 0,
     }));
 
-    contracts.forEach(contract => {
-      if (contract.signDate) {
-        const monthIndex = new Date(contract.signDate).getMonth();
+    // Tính Doanh thu (Dựa trên ngày ký hoặc ngày nộp)
+    contracts.forEach((contract) => {
+      const targetDate = contract.signDate || contract.submissionDate;
+      if (targetDate) {
+        const monthIndex = new Date(targetDate).getMonth();
         chartData[monthIndex].doanhThu += Number(contract.totalAmount || 0);
-        chartData[monthIndex].thucThu += Number(contract.paidAmount || 0);
+      }
+    });
+
+    // Tính Thực thu (Dựa trên ngày thanh toán thực tế hoặc ngày tạo phiếu thu)
+    receipts.forEach((receipt) => {
+      const targetDate = receipt.paidDate || receipt.createdAt;
+      if (targetDate) {
+        const monthIndex = new Date(targetDate).getMonth();
+        chartData[monthIndex].thucThu += Number(receipt.amount || 0);
       }
     });
 

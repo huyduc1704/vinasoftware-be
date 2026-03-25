@@ -14,16 +14,35 @@ export class ContractsService {
     if (!userId) throw new UnauthorizedException('Bạn chưa đăng nhập. Vui lòng đăng nhập để tạo hợp đồng.');
     const { employees, customerData, services, receipts, receiptCode, ...contractData } = createContractDto;
 
-    // Xử lý khách hàng: dùng ID có sẵn hoặc tạo mới
+    // Xử lý khách hàng: dùng ID có sẵn, tìm theo số điện thoại hoặc tạo mới
     let resolvedCustomerId = contractData.customerId;
 
     if (!resolvedCustomerId) {
       if (!customerData) {
         throw new BadRequestException('Vui lòng cung cấp customerId hoặc thông tin khách hàng mới (customerData).');
       }
-      // Tạo khách hàng mới và lấy ID
-      const newCustomer = await this.prisma.customer.create({ data: customerData });
-      resolvedCustomerId = newCustomer.id;
+
+      // Kiểm tra xem khách hàng đã tồn tại qua số điện thoại chưa
+      if (customerData.phone) {
+        const existingCustomer = await this.prisma.customer.findFirst({
+          where: { phone: customerData.phone }
+        });
+
+        if (existingCustomer) {
+          // Nếu tìm thấy, cập nhật thông tin mới nhất và dùng ID cũ
+          await this.prisma.customer.update({
+            where: { id: existingCustomer.id },
+            data: customerData
+          });
+          resolvedCustomerId = existingCustomer.id;
+        }
+      }
+
+      // Nếu vẫn chưa có ID (không tìm thấy theo phone hoặc không có phone), tạo mới
+      if (!resolvedCustomerId) {
+        const newCustomer = await this.prisma.customer.create({ data: customerData });
+        resolvedCustomerId = newCustomer.id;
+      }
     }
 
     // Fix empty strings for foreign keys & sanitized data
