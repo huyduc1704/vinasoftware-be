@@ -1,8 +1,8 @@
-# Vinasoftware Accounting - Backend API 🚀
+# Vinasoftware Accounting - Backend API
 
 Dự án Backend API cho hệ thống quản lý Kế toán & HR (Vinasoftware Accounting), được xây dựng trên nền tảng tiến tiến đảm bảo hiệu suất cao và dễ dàng mở rộng.
 
-## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
+## Công Nghệ Sử Dụng (Tech Stack)
 
 - **Framework:** [NestJS](https://nestjs.com/) (Node.js) - Kiến trúc module hóa, hỗ trợ Dependency Injection mạnh mẽ.
 - **Ngôn ngữ:** TypeScript.
@@ -13,7 +13,7 @@ Dự án Backend API cho hệ thống quản lý Kế toán & HR (Vinasoftware A
 
 ---
 
-## 🗄️ Bước 1: Tạo & Kết Nối Database PostgreSQL
+## Bước 1: Tạo & Kết Nối Database PostgreSQL
 
 Dự án sử dụng **PostgreSQL**. Bạn có thể dùng database trên Cloud miễn phí hoặc cài trên máy tính cục bộ.
 
@@ -90,12 +90,12 @@ npm run seed
 npm run dev
 ```
 
-✅ Server chạy tại: `http://localhost:8080`
-✅ Tài liệu API tại: `http://localhost:8080/docs`
+Server chạy tại: `http://localhost:8080`
+Tài liệu API tại: `http://localhost:8080/docs`
 
 ---
 
-## 🐳 Bước 2 (Thay Thế): Chạy Bằng Docker
+## Bước 2 (Thay Thế): Chạy Bằng Docker
 
 Nếu không muốn cài Node.js, bạn có thể dùng Docker để chạy toàn bộ dự án trong Container.
 
@@ -123,7 +123,7 @@ docker exec -it vinasoftware-api npx prisma db push
 docker exec -it vinasoftware-api npm run seed
 ```
 
-✅ Server chạy tại: `http://localhost:8080`
+Server chạy tại: `http://localhost:8080`
 
 ### Một số lệnh Docker hữu ích
 
@@ -143,7 +143,7 @@ docker rm -f vinasoftware-api
 
 ---
 
-## ☁️ Bước 3: Deploy Lên Railway (Production)
+## Bước 3: Deploy Lên Railway (Production)
 
 ### Deploy tự động từ GitHub (Khuyến nghị)
 
@@ -158,7 +158,7 @@ docker rm -f vinasoftware-api
 
 ---
 
-## 📚 Tài Liệu API
+## Tài Liệu API
 
 Sau khi server chạy, truy cập tài liệu API đầy đủ tại:
 - **Local:** `http://localhost:8080/docs`
