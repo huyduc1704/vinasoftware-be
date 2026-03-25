@@ -12,7 +12,7 @@ export class ContractsService {
 
   async create(createContractDto: CreateContractDto, userId: string) {
     if (!userId) throw new UnauthorizedException('Bạn chưa đăng nhập. Vui lòng đăng nhập để tạo hợp đồng.');
-    const { employees, customerData, services, paymentStages, ...contractData } = createContractDto;
+    const { employees, customerData, services, receipts, receiptCode, ...contractData } = createContractDto;
 
     // Xử lý khách hàng: dùng ID có sẵn hoặc tạo mới
     let resolvedCustomerId = contractData.customerId;
@@ -26,16 +26,62 @@ export class ContractsService {
       resolvedCustomerId = newCustomer.id;
     }
 
-    // Fix empty strings for foreign keys
+    // Fix empty strings for foreign keys & sanitized data
     const createData: any = { ...contractData };
+    delete createData.receiptCode; // Đảm bảo tuyệt đối không chui vào bảng Contracts
+
     if (createData.managerId === '') createData.managerId = null;
     if (createData.deptManagerId === '') createData.deptManagerId = null;
     if (createData.seniorDeptManagerId === '') createData.seniorDeptManagerId = null;
     if (createData.regionCode === '') createData.regionCode = null;
 
+    // Resolving Employee IDs if frontend sends EmployeeCode
+    const resolvedEmployees: { employeeId: string; isMain: boolean }[] = [];
+    if (employees && employees.length > 0) {
+      const allEmps = await this.prisma.employee.findMany({
+        where: {
+          OR: [
+            { id: { in: employees.map(e => e.employeeId) } },
+            { employeeCode: { in: employees.map(e => e.employeeId) } }
+          ]
+        }
+      });
+      for (const empReq of employees) {
+        const found = allEmps.find(e => e.id === empReq.employeeId || e.employeeCode === empReq.employeeId);
+        if (found) {
+          resolvedEmployees.push({ employeeId: found.id, isMain: empReq.isMain ?? true });
+        } else {
+          // BÁO LỖI LUÔN NẾU SAI MÃ NHÂN VIÊN
+          throw new BadRequestException(`Không tìm thấy nhân viên có mã hoặc ID là: ${empReq.employeeId}`);
+        }
+      }
+    }
+
+    const hasRealData = (s: any) => {
+      if (Number(s.totalAmount) > 0 || Number(s.price) > 0) return true;
+      if (s.domainInfo && s.domainInfo.domainName) return true;
+      if (s.hostingInfo && (s.hostingInfo.duration || s.hostingInfo.storage)) return true;
+      return false;
+    };
+    const filteredServices = services?.filter(hasRealData) || [];
+
+    // TỰ ĐỘNG TÍNH TOÁN TIỀN NẾU FRONTEND KHÔNG GỬI
+    let totalValue = Number(createData.totalAmount) || 0;
+    if (!totalValue && filteredServices.length > 0) {
+      totalValue = filteredServices.reduce((sum, s) => sum + (Number(s.totalAmount) || Number(s.price) || 0), 0);
+    }
+    let paidValue = Number(createData.paidAmount) || 0;
+    if (!paidValue && receipts) {
+      paidValue = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    }
+    const remainingValue = totalValue - paidValue;
+
     const contract = await this.prisma.contracts.create({
       data: {
         ...createData,
+        totalAmount: totalValue,
+        paidAmount: paidValue,
+        remainingAmount: remainingValue,
         customerId: resolvedCustomerId,
         signDate: contractData.signDate ? new Date(contractData.signDate) : null,
         submissionDate: contractData.submissionDate ? new Date(contractData.submissionDate) : null,
@@ -43,14 +89,15 @@ export class ContractsService {
 
         // Relational Create: ContractEmployee
         contractEmployees: {
-          create: employees?.map(emp => ({
+          create: resolvedEmployees.map(emp => ({
             employeeId: emp.employeeId,
             isMain: emp.isMain ?? true,
           })) || [],
         },
         // Relational Crate: Services
-        services: services && services.length > 0 ? {
-          create: services.map(svc => ({
+        services: filteredServices.length > 0 ? {
+          create: filteredServices.map(svc => ({
+            id: svc.id,
             type: svc.type,
             name: svc.name,
             price: svc.price,
@@ -73,12 +120,14 @@ export class ContractsService {
           }))
         } : undefined,
 
-        // Relational Create: PaymentStages
-        paymentStages: paymentStages && paymentStages.length > 0 ? {
-          create: paymentStages.map((ps, index) => ({
+        // Relational Create: Receipts
+        receipts: receipts && receipts.length > 0 ? {
+          create: receipts.map((ps: any, index: number) => ({
+            serviceId: ps.serviceId || null,
             name: ps.name,
             order: ps.order ?? index + 1,
             amount: ps.amount,
+            receiptCode: ps.receiptCode || receiptCode || null,
             paidDate: ps.paidDate ? new Date(ps.paidDate) : null,
           }))
         } : undefined,
@@ -92,7 +141,7 @@ export class ContractsService {
         services: {
           include: { domainInfo: true, hostingInfo: true }
         },
-        paymentStages: true,
+        receipts: true,
       },
     });
 
@@ -135,7 +184,7 @@ export class ContractsService {
             hostingInfo: true,
           }
         },
-        paymentStages: true,
+        receipts: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -159,7 +208,7 @@ export class ContractsService {
             hostingInfo: true,
           }
         },
-        paymentStages: true,
+        receipts: true,
         renewals: true,
         cskhNotes: {
           include: {
@@ -170,11 +219,9 @@ export class ContractsService {
       },
     });
 
-    if (!contract) {
-      throw new NotFoundException(`Contract with ID ${id} not found`);
-    }
-
-    return contract;
+    // Inject receiptCode at contract level (derived from receipts, since it's stored there)
+    const receiptCode = (contract as any).receipts?.find((r: any) => r.receiptCode)?.receiptCode || null;
+    return { ...contract, receiptCode };
   }
 
   async update(id: string, updateContractDto: UpdateContractDto) {
@@ -183,7 +230,9 @@ export class ContractsService {
       employees,
       customerData,
       services,
-      paymentStages,
+      receipts,
+      receiptCode, // Destructure để tránh leak vào bảng Contracts
+      id: contractId,
       // @ts-ignore - các field FE gửi lên nhưng không tồn tại trong schema
       employeeId, displayEmpCode, displayEmpName, displayDept, displayRegion,
       ...updateData
@@ -206,11 +255,55 @@ export class ContractsService {
     // Use Transaction to delete Old for safety Create New
 
 
+    // Resolving Employee IDs if frontend sends EmployeeCode
+    let resolvedEmployees: { employeeId: string; isMain: boolean }[] | undefined = undefined;
+    if (employees && Array.isArray(employees)) {
+      const allEmps = await this.prisma.employee.findMany({
+        where: {
+          OR: [
+            { id: { in: employees.map(e => e.employeeId) } },
+            { employeeCode: { in: employees.map(e => e.employeeId) } }
+          ]
+        }
+      });
+      resolvedEmployees = [];
+      for (const empReq of employees) {
+        const found = allEmps.find(e => e.id === empReq.employeeId || e.employeeCode === empReq.employeeId);
+        if (found) {
+          resolvedEmployees.push({ employeeId: found.id, isMain: empReq.isMain ?? true });
+        }
+      }
+    }
+
+    // Filter valid services — same logic as create
+    const hasRealData = (s: any) => {
+      if (Number(s.totalAmount) > 0 || Number(s.price) > 0) return true;
+      if (s.domainInfo && s.domainInfo.domainName) return true;
+      if (s.hostingInfo && (s.hostingInfo.duration || s.hostingInfo.storage)) return true;
+      return false;
+    };
+    const filteredServices = services ? services.filter(hasRealData) : undefined;
+
+    // Calculate totals
+    let totalValue = Number(dataToUpdate.totalAmount);
+    if (filteredServices) {
+      totalValue = filteredServices.reduce((sum, s) => sum + (Number(s.totalAmount) || Number(s.price) || 0), 0);
+    }
+    let paidValue = Number(dataToUpdate.paidAmount);
+    if (receipts) {
+      paidValue = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       // 1. Update original field of Contract (Total, Vat, Name ....)
       const updatedContract = await tx.contracts.update({
         where: { id },
-        data: dataToUpdate,
+        data: {
+          ...dataToUpdate,
+          totalAmount: totalValue || undefined,
+          paidAmount: paidValue || undefined,
+          remainingAmount: (totalValue !== undefined && paidValue !== undefined) ? (totalValue - paidValue) : undefined,
+        },
       });
 
       // If FE send services array, Delete Old and Create New
@@ -218,23 +311,24 @@ export class ContractsService {
         // Find existing services to delete their children first (Domain, Hosting) to prevent FK constraint
         const existingServices = await tx.service.findMany({ where: { contractId: id }, select: { id: true } });
         const serviceIds = existingServices.map(s => s.id);
-        
+
         if (serviceIds.length > 0) {
           await tx.domain.deleteMany({ where: { serviceId: { in: serviceIds } } });
           await tx.hosting.deleteMany({ where: { serviceId: { in: serviceIds } } });
           await tx.service.deleteMany({ where: { id: { in: serviceIds } } });
         }
 
-        for (const svc of services) {
+        for (const svc of filteredServices) {
           await tx.service.create({
             data: {
+              id: svc.id,
               contractId: id,
               type: svc.type,
               name: svc.name,
               price: svc.price,
               vatRate: svc.vatRate,
               vatAmount: svc.vatAmount,
-              total: svc.totalAmount,
+              total: svc.totalAmount ?? svc.total,
               domainInfo: svc.domainInfo ? {
                 create: {
                   domainName: svc.domainInfo.domainName,
@@ -254,27 +348,49 @@ export class ContractsService {
         }
       }
 
-      // If FE send paymentStages array, Delete Old and Create New
-      if (paymentStages && Array.isArray(paymentStages)) {
-        await tx.paymentStage.deleteMany({ where: { contractId: id } });
+      // If FE send receipts array, Delete Old and Create New
+      if (receipts && Array.isArray(receipts)) {
+        // Lấy lại các đợt thu cũ để bảo lưu (backup) ngày paidDate đề phòng UI không gửi lên
+        const oldReceipts = await tx.receipt.findMany({ where: { contractId: id } });
 
-        if (paymentStages.length > 0) {
-          await tx.paymentStage.createMany({
-            data: paymentStages.map((ps, index) => ({
-              contractId: id,
-              name: ps.name,
-              order: ps.order ?? index + 1,
-              amount: ps.amount,
-              paidDate: ps.paidDate ? new Date(ps.paidDate) : null
-            }))
+        await tx.receipt.deleteMany({ where: { contractId: id } });
+
+        if (receipts.length > 0) {
+          await tx.receipt.createMany({
+            data: receipts.map((ps: any, index: number) => {
+              const oldR = oldReceipts.find(r => r.name === ps.name);
+              const fallbackDate = oldR ? oldR.paidDate : null;
+
+              return {
+                contractId: id,
+                serviceId: ps.serviceId || oldR?.serviceId || null,
+                name: ps.name,
+                order: ps.order ?? index + 1,
+                amount: ps.amount,
+                receiptCode: ps.receiptCode || receiptCode || oldR?.receiptCode || null,
+                paidDate: ps.paidDate ? new Date(ps.paidDate) : fallbackDate
+              };
+            })
           });
         }
+      }
+
+      // 4. Update Employees if provided
+      if (resolvedEmployees) {
+        await tx.contract_Employees.deleteMany({ where: { contractId: id } });
+        await tx.contract_Employees.createMany({
+          data: resolvedEmployees.map(emp => ({
+            contractId: id,
+            employeeId: emp.employeeId,
+            isMain: emp.isMain,
+          }))
+        });
       }
 
       // Return Data Final for Client
       return tx.contracts.findUnique({
         where: { id },
-        include: { services: { include: { domainInfo: true, hostingInfo: true } }, paymentStages: true }
+        include: { services: { include: { domainInfo: true, hostingInfo: true } }, receipts: true }
       });
     });
   }

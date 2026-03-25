@@ -17,6 +17,7 @@ export class HostingInfoDto {
 
 // DTO cho Service
 export class ContractServiceDto {
+    @IsOptional() @IsString() id?: string;
     @IsEnum(ServiceType) type: ServiceType;
     @IsString() name: string;
     @IsOptional() @IsNumber() price?: number;
@@ -30,11 +31,13 @@ export class ContractServiceDto {
     hostingInfo?: HostingInfoDto;
 }
 
-// DTO chi PaymentStage
-export class ContractPaymentStageDto {
+// DTO chi Receipt
+export class ContractReceiptDto {
+    @IsOptional() @IsString() serviceId?: string;
     @IsString() name: string;
     @IsOptional() @IsNumber() order?: number;
     @IsOptional() @IsNumber() amount?: number;
+    @IsOptional() @IsString() receiptCode?: string;
     @IsOptional() @IsString() paidDate?: string;
 }
 
@@ -178,10 +181,10 @@ export class CreateContractDto {
     @Type(() => ContractServiceDto)
     services?: ContractServiceDto[];
 
-    @ApiProperty({ description: 'Payment Stages', type: [ContractPaymentStageDto] })
+    @ApiProperty({ description: 'Receipts', type: [ContractReceiptDto] })
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
-    @Type(() => ContractPaymentStageDto)
-    paymentStages?: ContractPaymentStageDto[];
+    @Type(() => ContractReceiptDto)
+    receipts?: ContractReceiptDto[];
 }
