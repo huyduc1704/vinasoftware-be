@@ -47,7 +47,7 @@ export class ContractsService {
 
     // Fix empty strings for foreign keys & sanitized data
     const createData: any = { ...contractData };
-    delete createData.receiptCode; // Đảm bảo tuyệt đối không chui vào bảng Contracts
+    delete createData.receiptCode; // receiptCode không tồn tại trong bảng Contracts, chỉ dùng cho Receipt
 
     if (createData.managerId === '') createData.managerId = null;
     if (createData.deptManagerId === '') createData.deptManagerId = null;
@@ -252,14 +252,17 @@ export class ContractsService {
       customerData,
       services,
       receipts,
-      receiptCode, // Destructure để tránh leak vào bảng Contracts
       id: contractId,
       // @ts-ignore - các field FE gửi lên nhưng không tồn tại trong schema
       employeeId, displayEmpCode, displayEmpName, displayDept, displayRegion,
       ...updateData
     } = updateContractDto as any;
 
+    // Lấy receiptCode riêng để dùng cho receipts
+    const receiptCode = updateData.receiptCode;
+
     const dataToUpdate: any = { ...updateData };
+    delete dataToUpdate.receiptCode; // receiptCode không tồn tại trong bảng Contracts
     if (updateData.signDate) {
       dataToUpdate.signDate = new Date(updateData.signDate);
     }
@@ -306,14 +309,18 @@ export class ContractsService {
     const filteredServices = services ? services.filter(hasRealData) : undefined;
 
     // Calculate totals
-    let totalValue = Number(dataToUpdate.totalAmount);
-    if (filteredServices) {
+    let totalValue: any = Number(dataToUpdate.totalAmount);
+    if (filteredServices && filteredServices.length > 0) {
       totalValue = filteredServices.reduce((sum, s) => sum + (Number(s.totalAmount) || Number(s.price) || 0), 0);
     }
-    let paidValue = Number(dataToUpdate.paidAmount);
-    if (receipts) {
+    let paidValue: any = Number(dataToUpdate.paidAmount);
+    if (receipts && receipts.length > 0) {
       paidValue = receipts.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
     }
+
+    // Handle NaN (when field not provided by FE)
+    if (isNaN(totalValue)) totalValue = undefined;
+    if (isNaN(paidValue)) paidValue = undefined;
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Update original field of Contract (Total, Vat, Name ....)
@@ -321,9 +328,9 @@ export class ContractsService {
         where: { id },
         data: {
           ...dataToUpdate,
-          totalAmount: totalValue || undefined,
-          paidAmount: paidValue || undefined,
-          remainingAmount: (totalValue !== undefined && paidValue !== undefined) ? (totalValue - paidValue) : undefined,
+          totalAmount: totalValue ?? undefined,
+          paidAmount: paidValue ?? undefined,
+          remainingAmount: (totalValue != null && paidValue != null) ? (totalValue - paidValue) : undefined,
         },
       });
 

@@ -114,6 +114,19 @@ export class EmployeesService {
     return employee;
   }
 
+  async getEmployeeByCode(code: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { employeeCode: code },
+      include: {
+        employeeRegions: { include: { region: true } },
+        deptManager: true,
+        manager: true,
+      }
+    });
+    if (!employee) throw new NotFoundException('Không tim thấy nhân viên với mã này');
+    return employee;
+  }
+
   async createEmployee(data: CreateEmployeeDto) {
     const { employeeCode, password, roleIds, regionCode, roleCode, ...restData } = data;
 

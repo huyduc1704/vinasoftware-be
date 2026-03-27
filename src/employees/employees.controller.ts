@@ -26,6 +26,12 @@ export class EmployeesController {
     return this.employeesService.getEmployeeById(id);
   }
 
+  @ApiOperation({ summary: 'Tìm nhân viên qua Mã nhân viên' })
+  @Get('code/:code')
+  getEmployeeByCode(@Param('code') code: string) {
+    return this.employeesService.getEmployeeByCode(code);
+  };
+
   @ApiOperation({ summary: 'Thêm nhân viên mới' })
   @Post()
   createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {

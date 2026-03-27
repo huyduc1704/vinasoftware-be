@@ -50,8 +50,8 @@ export class ContractEmployeeDto {
 
 export class InlineCustomerDto {
     @ApiProperty({ description: 'Tên khách hàng / Tên công ty' })
-    @IsNotEmpty()
-    @IsString()
+    @IsNotEmpty({ message: 'Tên khách hàng không được để trống' })
+    @IsString({ message: 'Tên khách hàng phải là chuỗi ký tự' })
     fullName: string;
 
     @ApiProperty({ required: false, description: 'Người đại diện' })
@@ -82,24 +82,29 @@ export class InlineCustomerDto {
 
 export class CreateContractDto {
     @ApiProperty()
-    @IsNotEmpty()
-    @IsString()
+    @IsNotEmpty({ message: 'Số hợp đồng không được để trống' })
+    @IsString({ message: 'Số hợp đồng phải là chuỗi ký tự' })
     contractCode: string;
 
     @ApiProperty()
-    @IsNotEmpty()
-    @IsString()
+    @IsNotEmpty({ message: 'Tên hợp đồng không được để trống' })
+    @IsString({ message: 'Tên hợp đồng phải là chuỗi ký tự' })
     title: string;
 
     @ApiProperty({ description: 'Loại hợp đồng', enum: ContractType })
-    @IsNotEmpty()
-    @IsEnum(ContractType)
+    @IsNotEmpty({ message: 'Loại hợp đồng không được để trống' })
+    @IsEnum(ContractType, { message: 'Loại hợp đồng không hợp lệ' })
     type: ContractType;
 
     @ApiProperty({ required: false })
     @IsOptional()
     @IsString()
     receiptCode?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    features?: string;
 
     @ApiProperty({ required: false })
     @IsOptional()
