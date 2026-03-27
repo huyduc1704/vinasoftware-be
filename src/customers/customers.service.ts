@@ -2,17 +2,45 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CustomersService {
   constructor(private prisma: PrismaService) { }
 
-  create(createCustomerDto: CreateCustomerDto) {
+  async create(createCustomerDto: CreateCustomerDto) {
+    if (createCustomerDto.phone) {
+      const existing = await this.prisma.customer.findFirst({
+        where: { phone: createCustomerDto.phone },
+      });
+      if (existing) {
+        throw new BadRequestException('Số điện thoại này đã tồn tại trên hệ thống!');
+      }
+    }
     return this.prisma.customer.create({ data: createCustomerDto });
   }
 
-  findAll() {
+  // Tìm kiếm theo số điện thoại
+  async findByPhone(phone: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { phone },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Không tìm thấy khách hàng với số điện thoại này');
+    }
+    return customer;
+  }
+
+  findAll(search?: string) {
+    const where = search ? {
+      OR: [
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ],
+    } : {};
     return this.prisma.customer.findMany({
+      where: where as Prisma.CustomerWhereInput,
       include: {
         contracts: {
           orderBy: { createdAt: 'desc' }

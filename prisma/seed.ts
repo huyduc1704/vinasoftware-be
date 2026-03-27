@@ -76,6 +76,29 @@ async function seed() {
             // Static Page
             { code: 'STATIC_*', name: 'Tất cả quyền Trang Tĩnh', module: 'TRANG TĨNH', resource: '*', resource_name: 'Tất cả Trang Tĩnh', action: '*' },
             { code: 'STATIC_FOOTER_EDIT', name: 'Chỉnh sửa Footer', module: 'TRANG TĨNH', resource: 'FOOTER', resource_name: 'Footer', action: 'EDIT' },
+            { code: 'DASHBOARD_VIEW', name: 'Xem biểu đồ Dashboard', module: 'HỆ THỐNG', resource: 'DASHBOARD', resource_name: 'Trang chủ', action: 'VIEW' },
+            //Employee Manager
+            { code: 'USER_*', name: 'Tất cả quyền Nhân sự', module: 'NHÂN SỰ', resource: '*', resource_name: 'Tất cả Nhân sự', action: '*' },
+            { code: 'USER_VIEW', name: 'Xem danh sách Nhân sự', module: 'NHÂN SỰ', resource: 'USER', resource_name: 'Nhân viên', action: 'VIEW' },
+            { code: 'USER_ROLE_ASSIGN', name: 'Gán quyền nhân viên', module: 'NHÂN SỰ', resource: 'USER_ROLE', resource_name: 'Phân quyền', action: 'ASSIGN' },
+            { code: 'USER_EXPORT', name: 'Xuất Excel Nhân sự', module: 'NHÂN SỰ', resource: 'USER', resource_name: 'Nhân viên', action: 'EXPORT' },
+            //Region
+            { code: 'REGION_VIEW', name: 'Xem danh sách khu vực', module: 'HỆ THỐNG', resource: 'REGION', resource_name: 'Khu vực', action: 'VIEW' },
+            { code: 'REGION_CREATE', name: 'Thêm mới khu vực', module: 'HỆ THỐNG', resource: 'REGION', resource_name: 'Khu vực', action: 'CREATE' },
+            { code: 'REGION_EDIT', name: 'Sửa khu vực', module: 'HỆ THỐNG', resource: 'REGION', resource_name: 'Khu vực', action: 'EDIT' },
+            { code: 'REGION_DELETE', name: 'Xóa khu vực', module: 'HỆ THỐNG', resource: 'REGION', resource_name: 'Khu vực', action: 'DELETE' },
+
+            // Quản lý Nhóm quyền (Roles)
+            { code: 'ROLE_*', name: 'Tất cả quyền Nhóm quyền', module: 'HỆ THỐNG', resource: 'ROLE', resource_name: 'Nhóm quyền', action: '*' },
+            { code: 'ROLE_VIEW', name: 'Xem danh sách Nhóm quyền', module: 'HỆ THỐNG', resource: 'ROLE', resource_name: 'Nhóm quyền', action: 'VIEW' },
+            { code: 'ROLE_CREATE', name: 'Thêm mới Nhóm quyền', module: 'HỆ THỐNG', resource: 'ROLE', resource_name: 'Nhóm quyền', action: 'CREATE' },
+            { code: 'ROLE_EDIT', name: 'Sửa Nhóm quyền', module: 'HỆ THỐNG', resource: 'ROLE', resource_name: 'Nhóm quyền', action: 'EDIT' },
+            { code: 'ROLE_DELETE', name: 'Xóa Nhóm quyền', module: 'HỆ THỐNG', resource: 'ROLE', resource_name: 'Nhóm quyền', action: 'DELETE' },
+
+            // Quản lý Khách hàng (Customers)
+            { code: 'CUSTOMER_*', name: 'Tất cả quyền Khách hàng', module: 'KHÁCH HÀNG', resource: '*', resource_name: 'Tất cả Khách hàng', action: '*' },
+            { code: 'CUSTOMER_VIEW', name: 'Xem danh sách Khách hàng', module: 'KHÁCH HÀNG', resource: 'CUSTOMER', resource_name: 'Khách hàng', action: 'VIEW' },
+            { code: 'CUSTOMER_EDIT', name: 'Sửa thông tin Khách hàng', module: 'KHÁCH HÀNG', resource: 'CUSTOMER', resource_name: 'Khách hàng', action: 'EDIT' },
         ];
 
         for (const perm of permissionsList) {

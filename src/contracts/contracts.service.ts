@@ -238,6 +238,8 @@ export class ContractsService {
       },
     });
 
+    if (!contract) throw new NotFoundException('Không tìm thấy hợp đồng');
+
     // Inject receiptCode at contract level (derived from receipts, since it's stored there)
     const receiptCode = (contract as any).receipts?.find((r: any) => r.receiptCode)?.receiptCode || null;
     return { ...contract, receiptCode };

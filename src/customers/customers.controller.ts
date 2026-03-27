@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -19,10 +19,16 @@ export class CustomersController {
     return this.customersService.create(createCustomerDto);
   }
 
+  @ApiOperation({ summary: 'Tìm khách hàng theo số điện thoại' })
+  @Get('phone/:phone')
+  findByPhone(@Param('phone') phone: string) {
+    return this.customersService.findByPhone(phone);
+  }
+
   @ApiOperation({ summary: 'Lấy danh sách khách hàng' })
   @Get()
-  findAll() {
-    return this.customersService.findAll();
+  findAll(@Query('search') search?: string) {
+    return this.customersService.findAll(search);
   }
 
   @ApiOperation({ summary: 'Lấy thông tin khách hàng theo ID' })
