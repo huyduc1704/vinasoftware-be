@@ -137,7 +137,7 @@ export class EmployeesService {
     const createData: any = {
       ...restData,
       roleCode: roleCode || null,
-      managerId: restData.managerId || restData.areaManagerId || null,
+      managerId: restData.managerId || null,
       deptManagerId: restData.deptManagerId || null,
       seniorDeptManagerId: restData.seniorDeptManagerId || null,
       employeeCode,
@@ -192,11 +192,10 @@ export class EmployeesService {
 
     const { password, roleIds, employeeCode, regionCode, roleCode, ...employeeData } = data;
 
-    const managerId = employeeData.managerId || employeeData.areaManagerId;
     const formattedData: any = {
       ...employeeData,
       roleCode: roleCode || undefined,
-      managerId: managerId === '' ? null : (managerId || undefined),
+      managerId: employeeData.managerId === '' ? null : (employeeData.managerId || undefined),
       deptManagerId: employeeData.deptManagerId === '' ? null : employeeData.deptManagerId,
       seniorDeptManagerId: employeeData.seniorDeptManagerId === '' ? null : employeeData.seniorDeptManagerId,
     };

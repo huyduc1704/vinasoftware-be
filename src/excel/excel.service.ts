@@ -300,7 +300,7 @@ export class ExcelService {
 
 
     /**
-     * Nhập hợp đồng từ file Excel (Flat Data -> DB)
+     * Import Contracts from Excel (Flat Data -> DB)
      */
     async importContracts(file: Express.Multer.File, userId: string) {
         const workbook = new ExcelJS.Workbook();
@@ -308,7 +308,7 @@ export class ExcelService {
         const worksheet = workbook.getWorksheet(1);
 
         if (!worksheet) {
-            throw new BadRequestException('Không tìm thấy worksheet trong file Excel');
+            throw new BadRequestException('Did not find any worksheet in the Excel file');
         }
 
         const errors: any[] = [];

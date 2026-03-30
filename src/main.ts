@@ -52,8 +52,8 @@ async function bootstrap() {
   //Register Global filter
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.listen(process.env.PORT ?? 8080);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 8080}`);
-  console.log(`API Docs (Scalar) available at: http://localhost:${process.env.PORT ?? 8080}/docs`);
+  await app.listen(process.env.PORT ?? 8081);
+  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 8081}`);
+  console.log(`API Docs (Scalar) available at: http://localhost:${process.env.PORT ?? 8081}/docs`);
 }
 bootstrap();
